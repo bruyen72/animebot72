@@ -7,9 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node --max-old-space-size=512 index.js",
     "dev": "node --max-old-space-size=512 index.js",
-    "build": "npm install --legacy-peer-deps --force && npx puppeteer browsers install chrome",
+    "build": "npm install --legacy-peer-deps --force && bash chrome-installer.sh",
     "prestart": "echo '🚀 Iniciando YakaBot...'",
-    "postinstall": "npx puppeteer browsers install chrome || echo '⚠️ Chrome install failed'"
+    "postinstall": "echo '✅ Instalação concluída'"
   },
   "repository": {
     "type": "git",
