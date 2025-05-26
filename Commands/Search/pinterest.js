@@ -1,3 +1,6 @@
+// Configuração do Puppeteer para Render
+process.env.PUPPETEER_EXECUTABLE_PATH = '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome';
+
 const puppeteer = require("puppeteer");
 
 class PinterestImageScraper {
