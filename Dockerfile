@@ -32,9 +32,9 @@ RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
 # CONFIGURA DIRETÓRIO DE TRABALHO
 WORKDIR /app
 
-# COPIA E INSTALA DEPENDÊNCIAS
+# COPIA E INSTALA DEPENDÊNCIAS (usando npm install com legacy-peer-deps para evitar conflito)
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --only=production --legacy-peer-deps && npm cache clean --force
 
 # COPIA CÓDIGO DA APLICAÇÃO
 COPY . .
