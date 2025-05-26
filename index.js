@@ -8,9 +8,9 @@ const {
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
     jidDecode,
-    proto
+    proto,
+    makeInMemoryStore
 } = require("@whiskeysockets/baileys");
-const { makeInMemoryStore } = require("@whiskeysockets/baileys/lib/Store");
 const fs = require("fs");
 const chalk = require("chalk");
 const path = require("path");
@@ -944,6 +944,7 @@ async function startYaka() {
         // Conectar ao MongoDB com tratamento de erro
         let dbConnected = false;
         try {
+            console.log("Tentando conectar ao MongoDB...");
             await mongoose.connect(global.mongodb || '', {
                 useNewUrlParser: true,
                 useUnifiedTopology: true,
@@ -952,10 +953,10 @@ async function startYaka() {
                 maxPoolSize: 10, // Reduzido para menor consumo
                 minPoolSize: 2
             });
-            logger.info("✅ Database 1 conectada!");
+            console.log("\nDatabase 1 connected !\n");
             dbConnected = true;
         } catch (err) {
-            logger.warn("⚠️ Database 1 falhou, tentando Database 2");
+            console.log("\nTentando conectar ao Discord XP com MongoDB...\n");
             
             try {
                 await mongoose.connect(global.mongodbUrl || '', {
@@ -966,7 +967,7 @@ async function startYaka() {
                     maxPoolSize: 10,
                     minPoolSize: 2
                 });
-                logger.info("✅ Database 2 conectada!");
+                console.log("\nDatabase 2 connected !\n");
                 dbConnected = true;
             } catch (err) {
                 logger.warn("⚠️ Database 2 falhou. Continuando sem banco de dados.");
@@ -1015,13 +1016,9 @@ async function startYaka() {
         }
 
         // ASCII Art para console - Corrigido para evitar duplicação
-        console.log(chalk.magenta(figlet.textSync('YAKA BOT', {
-            font: 'Standard',
-            horizontalLayout: 'default',
-            vertivalLayout: 'default',
-            width: 80,
-            whitespaceBreak: true
-        })));
+        console.log("\nCarregando, por favor aguarde...\n");
+        console.log("\nNão modifique este bot por conta própria!!");
+        console.log("Pergunte ao proprietário antes de fazê-lo..\n");
 
         // Obter versão do Baileys
         const { version, isLatest } = await fetchLatestBaileysVersion();
@@ -1609,7 +1606,7 @@ async function startYaka() {
                 // Verificar cache primeiro
                 if (userCache.has(id)) {
                     return userCache.get(id).name || id.split('@')[0];
-                }
+                    }
                 
                 let v;
                 if (id.endsWith("@g.us")) {
@@ -2376,7 +2373,6 @@ async function startYaka() {
                         }
                     }
                 }
-                
                 // Salvar em cache
                 Commands.menuCache = menu;
                 
