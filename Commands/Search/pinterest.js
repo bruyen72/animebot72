@@ -1,24 +1,20 @@
-// Configuração do Puppeteer para Render - DETECÇÃO AUTOMÁTICA + FALLBACK
+// DETECÇÃO MELHORADA DO CHROME
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
-// Função para encontrar o Chrome automaticamente
 function findChromeExecutable() {
-  const possiblePaths = [
-    '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
-    '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.72/chrome-linux64/chrome',
-    '/opt/render/.cache/puppeteer/chrome/linux-130.0.6723.69/chrome-linux64/chrome',
-    '/opt/render/.cache/puppeteer/chrome/linux-131.0.6778.69/chrome-linux64/chrome',
+  const chromePaths = [
     '/usr/bin/google-chrome-stable',
     '/usr/bin/google-chrome',
     '/usr/bin/chromium-browser',
     '/usr/bin/chromium',
+    '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
     process.env.CHROME_BIN,
     process.env.PUPPETEER_EXECUTABLE_PATH
   ].filter(Boolean);
 
-  // Busca dinâmica no diretório do Puppeteer
+  // Busca dinâmica melhorada
   try {
     const puppeteerDir = '/opt/render/.cache/puppeteer/chrome';
     if (fs.existsSync(puppeteerDir)) {
@@ -26,27 +22,23 @@ function findChromeExecutable() {
       for (const version of versions) {
         const chromePath = path.join(puppeteerDir, version, 'chrome-linux64', 'chrome');
         if (fs.existsSync(chromePath)) {
-          possiblePaths.unshift(chromePath);
+          chromePaths.unshift(chromePath);
         }
       }
     }
   } catch (error) {
-    console.log('[CHROME] Erro ao buscar dinamicamente:', error.message);
+    console.log('[CHROME] Busca dinâmica falhou:', error.message);
   }
 
-  // Testa cada caminho
-  for (const chromePath of possiblePaths) {
+  for (const chromePath of chromePaths) {
     if (chromePath && fs.existsSync(chromePath)) {
-      console.log(`[CHROME] ✅ Encontrado em: ${chromePath}`);
+      console.log(`[CHROME] ✅ Encontrado: ${chromePath}`);
       return chromePath;
     }
   }
-
-  console.log('[CHROME] ⚠️ Nenhum executável encontrado, usando padrão do sistema');
   return null;
 }
 
-// Define o caminho do Chrome
 const chromeExecutable = findChromeExecutable();
 if (chromeExecutable) {
   process.env.PUPPETEER_EXECUTABLE_PATH = chromeExecutable;
