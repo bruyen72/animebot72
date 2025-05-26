@@ -29,24 +29,35 @@ if (!gg) {
 // -------------------------------------------------------------- //
 global.owner = gg.split(",");
 
-// MONGODB DESABILITADO - Para evitar erros
-global.mongodb = ""; // Deixar vazio para desabilitar
-global.mongodbUrl = ""; // Deixar vazio para desabilitar
+// MONGODB - Configurar com MongoDB Atlas para velocidade
+global.mongodb = process.env.MONGODB || "mongodb+srv://seu-usuario:sua-senha@cluster.mongodb.net/yakabot?retryWrites=true&w=majority";
+global.mongodbUrl = process.env.MONGODB_URL || global.mongodb;
 
 global.sessionId = process.env.SESSION_ID || "ok";
 global.prefa = process.env.PREFIX || ".";
 global.tenorApiKey = process.env.TENOR_API_KEY || "AIzaSyCAYZ930Rq1EFiRNRJuSeGGrKljCnOb8-U";
 global.packname = process.env.PACKNAME || `👹 𝕐𝕒𝕜𝕒ᵐᵈ`;
 global.author = process.env.AUTHOR || "por: 𝖄𝖆𝖐𝖆𝖘𝖍𝖎";
-global.port = process.env.PORT || "8000";
+global.port = process.env.PORT || "3000";
 
-// CONFIGURAÇÕES PARA DESABILITAR FUNCIONALIDADES QUE CAUSAM ERRO
-global.disableXP = true; // Desabilitar sistema de XP
-global.disableAntilink = true; // Desabilitar antilink
-global.disableBotSwitch = true; // Desabilitar botSwitch
-global.disableChatbot = true; // Desabilitar chatbot
-global.disableNSFW = true; // Desabilitar NSFW check
-global.disableBan = true; // Desabilitar sistema de ban
+// FUNCIONALIDADES IMPORTANTES HABILITADAS
+global.disableXP = true; // Desabilitar XP (causa lentidão)
+global.disableAntilink = true; // Desabilitar antilink (causa lentidão)
+global.disableBotSwitch = false; // ✅ MANTER botSwitch
+global.disableChatbot = false; // ✅ MANTER chatbot  
+global.disableNSFW = false; // ✅ MANTER NSFW check
+global.disableBan = false; // ✅ MANTER sistema de ban
+
+// OTIMIZAÇÕES DE VELOCIDADE
+global.fastMode = true; // Modo rápido
+global.quickResponse = true; // Resposta rápida
+global.cacheEnabled = true; // Cache habilitado
+global.optimizedDB = true; // DB otimizado
+
+// CONFIGURAÇÕES DE TIMEOUT OTIMIZADAS
+global.dbTimeout = 3000; // 3 segundos timeout (mais rápido)
+global.commandTimeout = 5000; // 5 segundos para comandos
+global.responseTimeout = 2000; // 2 segundos para resposta
 
 module.exports = {
     mongodb: global.mongodb,
@@ -54,17 +65,17 @@ module.exports = {
 
 // ---------------------Não Modifique esta parte------------------- //
 global.mess = {
-    jobdone: "Tarefa concluída...",
-    useradmin: "Desculpe, apenas *Administradores do Grupo* podem usar este comando *Baka*!",
-    botadmin: "Desculpe, não posso executar este comando sem ser um *Administrador* deste grupo.",
-    botowner: "Apenas meu *Dono* pode usar este comando, Baka!",
-    grouponly: "Este comando é feito apenas para *Grupos*, Baka!",
-    privateonly: "Este comando é feito apenas para *Chat Privado*, Baka!",
-    botonly: "Apenas o próprio *Bot* pode usar este comando!",
-    waiting: "Aguarde um momento...",
-    nolink: "Por favor, me forneça um *link*, Baka!",
-    error: "Ocorreu um erro!",
-    banned: `Você está Banido de usar comandos! \n\nDigite ${global.prefa}owner ou ${global.prefa}support para enviar uma solicitação para desbanir você mesmo!`,
-    bangc: "Este Grupo está *Banido* de usar Comandos!",
-    nonsfw: "Não seja pervertido Baka! Este não é um grupo habilitado para NSFW!",
+    jobdone: "✅ Tarefa concluída!",
+    useradmin: "❌ Apenas *Administradores* podem usar este comando!",
+    botadmin: "❌ Preciso ser *Administrador* para executar este comando!",
+    botowner: "❌ Apenas meu *Dono* pode usar este comando!",
+    grouponly: "❌ Este comando é apenas para *Grupos*!",
+    privateonly: "❌ Este comando é apenas para *Chat Privado*!",
+    botonly: "❌ Apenas o próprio *Bot* pode usar este comando!",
+    waiting: "⏳ Processando...",
+    nolink: "❌ Forneça um *link*!",
+    error: "❌ Ocorreu um erro!",
+    banned: `🚫 Você está banido!\n\nDigite ${global.prefa}owner para solicitar desbloqueio.`,
+    bangc: "🚫 Este grupo está *banido*!",
+    nonsfw: "🔞 Este grupo não permite conteúdo NSFW!",
 };
