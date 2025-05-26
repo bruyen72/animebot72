@@ -1,47 +1,124 @@
-// DETECÇÃO MELHORADA DO CHROME
+// DETECÇÃO DEFINITIVA DO CHROME - CORRIGIDA
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
 function findChromeExecutable() {
+  console.log('[CHROME] 🔍 Iniciando busca completa...');
+  
+  // Lista de caminhos prioritários
   const chromePaths = [
+    '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
     '/usr/bin/google-chrome-stable',
     '/usr/bin/google-chrome',
     '/usr/bin/chromium-browser',
     '/usr/bin/chromium',
-    '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
     process.env.CHROME_BIN,
     process.env.PUPPETEER_EXECUTABLE_PATH
   ].filter(Boolean);
 
-  // Busca dinâmica melhorada
+  // PRIMEIRO: Busca dinâmica no Puppeteer (PRIORIDADE MÁXIMA)
   try {
     const puppeteerDir = '/opt/render/.cache/puppeteer/chrome';
+    console.log(`[CHROME] Verificando diretório Puppeteer: ${puppeteerDir}`);
+    
     if (fs.existsSync(puppeteerDir)) {
       const versions = fs.readdirSync(puppeteerDir);
+      console.log(`[CHROME] Versões encontradas: ${versions.join(', ')}`);
+      
       for (const version of versions) {
         const chromePath = path.join(puppeteerDir, version, 'chrome-linux64', 'chrome');
+        console.log(`[CHROME] Testando: ${chromePath}`);
+        
         if (fs.existsSync(chromePath)) {
-          chromePaths.unshift(chromePath);
+          // Testa se é executável
+          try {
+            fs.accessSync(chromePath, fs.constants.X_OK);
+            console.log(`[CHROME] ✅ PUPPETEER CHROME ENCONTRADO: ${chromePath}`);
+            return chromePath; // RETORNA IMEDIATAMENTE
+          } catch (execError) {
+            console.log(`[CHROME] ⚠️ Não executável: ${chromePath}`);
+          }
         }
       }
+    } else {
+      console.log('[CHROME] ❌ Diretório Puppeteer não existe');
     }
   } catch (error) {
-    console.log('[CHROME] Busca dinâmica falhou:', error.message);
+    console.log('[CHROME] ❌ Erro na busca dinâmica:', error.message);
   }
 
+  // SEGUNDO: Testa caminhos da lista
+  console.log('[CHROME] Testando caminhos predefinidos...');
   for (const chromePath of chromePaths) {
-    if (chromePath && fs.existsSync(chromePath)) {
-      console.log(`[CHROME] ✅ Encontrado: ${chromePath}`);
-      return chromePath;
+    if (chromePath) {
+      console.log(`[CHROME] Testando: ${chromePath}`);
+      try {
+        if (fs.existsSync(chromePath)) {
+          // Verifica se é executável
+          fs.accessSync(chromePath, fs.constants.X_OK);
+          console.log(`[CHROME] ✅ ENCONTRADO: ${chromePath}`);
+          return chromePath;
+        } else {
+          console.log(`[CHROME] ❌ Não existe: ${chromePath}`);
+        }
+      } catch (error) {
+        console.log(`[CHROME] ❌ Erro ao testar ${chromePath}: ${error.message}`);
+      }
     }
   }
+
+  // TERCEIRO: Busca em todo o sistema
+  console.log('[CHROME] Fazendo busca ampla no sistema...');
+  const searchDirs = ['/usr/bin', '/usr/local/bin', '/opt', '/snap/bin'];
+  
+  for (const dir of searchDirs) {
+    try {
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir);
+        const chromeFiles = files.filter(file => 
+          file.includes('chrome') || file.includes('chromium')
+        );
+        
+        for (const file of chromeFiles) {
+          const fullPath = path.join(dir, file);
+          try {
+            if (fs.statSync(fullPath).isFile()) {
+              fs.accessSync(fullPath, fs.constants.X_OK);
+              console.log(`[CHROME] ✅ BUSCA AMPLA ENCONTROU: ${fullPath}`);
+              return fullPath;
+            }
+          } catch {}
+        }
+      }
+    } catch (error) {
+      console.log(`[CHROME] Erro ao buscar em ${dir}:`, error.message);
+    }
+  }
+
+  console.log('[CHROME] ❌ NENHUM CHROME ENCONTRADO EM LUGAR ALGUM');
   return null;
 }
 
+// Executa a busca e configura
+console.log('[CHROME] 🚀 Iniciando configuração...');
 const chromeExecutable = findChromeExecutable();
+
 if (chromeExecutable) {
+  // Configura TODAS as variáveis possíveis
   process.env.PUPPETEER_EXECUTABLE_PATH = chromeExecutable;
+  process.env.CHROME_BIN = chromeExecutable;
+  process.env.GOOGLE_CHROME_BIN = chromeExecutable;
+  process.env.CHROMIUM_BIN = chromeExecutable;
+  
+  console.log(`[CHROME] ✅ CONFIGURADO EM TODAS AS VARIÁVEIS: ${chromeExecutable}`);
+  console.log(`[CHROME] PUPPETEER_EXECUTABLE_PATH = ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+} else {
+  console.log('[CHROME] ⚠️ CHROME NÃO ENCONTRADO - Modo fallback ativado');
+  
+  // Força configurações de download
+  process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'false';
+  process.env.PUPPETEER_CACHE_DIR = '/opt/render/.cache/puppeteer';
 }
 
 const puppeteer = require("puppeteer");
