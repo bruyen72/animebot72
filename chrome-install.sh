@@ -3,9 +3,35 @@
 
 echo "🚀 INSTALANDO CHROME NO RENDER - MÉTODO DEFINITIVO"
 
+# Primeiro: limpar e instalar npm
+echo "📦 Limpando npm e instalando dependências..."
+rm -f .npmrc && npm install --legacy-peer-deps --force && npx puppeteer browsers install chrome
+
 # Criar diretórios
 mkdir -p /opt/render/project/chrome-bin
 mkdir -p /opt/render/.cache/puppeteer
+
+# Verificar se Puppeteer instalou Chrome
+echo "🔍 Verificando instalação do Puppeteer..."
+CHROME_DIRS="/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome"
+for chrome_path in $CHROME_DIRS; do
+    if [ -f "$chrome_path" ]; then
+        echo "✅ Chrome do Puppeteer encontrado: $chrome_path"
+        
+        # Criar link simbólico
+        ln -sf "$chrome_path" /opt/render/project/chrome-bin/chrome
+        
+        # Definir variável
+        echo "export PUPPETEER_EXECUTABLE_PATH=$chrome_path" >> ~/.bashrc
+        echo "export CHROME_BIN=$chrome_path" >> ~/.bashrc
+        
+        echo "🎉 Chrome do Puppeteer configurado!"
+        exit 0
+    fi
+done
+
+# Se Puppeteer falhou, instalar manualmente
+echo "🔧 Puppeteer falhou, instalando Chrome manualmente..."
 
 # Atualizar sistema
 apt-get update -qq
@@ -40,31 +66,7 @@ if [ -f "google-chrome-stable_current_amd64.deb" ]; then
     fi
 fi
 
-# Método 2: Puppeteer install forçado
-echo "🔧 Tentando Puppeteer install..."
-cd /opt/render/project/src
-export PUPPETEER_CACHE_DIR=/opt/render/.cache/puppeteer
-npx puppeteer browsers install chrome --force
-
-# Verificar se Puppeteer instalou
-CHROME_DIRS="/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome"
-for chrome_path in $CHROME_DIRS; do
-    if [ -f "$chrome_path" ]; then
-        echo "✅ Chrome do Puppeteer encontrado: $chrome_path"
-        
-        # Criar link simbólico
-        ln -sf "$chrome_path" /opt/render/project/chrome-bin/chrome
-        
-        # Definir variável
-        echo "export PUPPETEER_EXECUTABLE_PATH=$chrome_path" >> ~/.bashrc
-        echo "export CHROME_BIN=$chrome_path" >> ~/.bashrc
-        
-        echo "🎉 Chrome do Puppeteer configurado!"
-        exit 0
-    fi
-done
-
-# Método 3: Download Chromium
+# Método 2: Download Chromium
 echo "🔧 Baixando Chromium como fallback..."
 cd /tmp
 wget -q https://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/1083080/chrome-linux.zip
@@ -88,5 +90,27 @@ if [ -f "chrome-linux.zip" ]; then
     fi
 fi
 
+# Método 3: Instalar via apt como último recurso
+echo "🔧 Tentando instalação via apt..."
+wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add -
+echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+apt-get update -qq
+apt-get install -y google-chrome-stable
+
+if [ -f "/usr/bin/google-chrome-stable" ]; then
+    echo "✅ Chrome via apt instalado!"
+    
+    # Criar link
+    ln -sf /usr/bin/google-chrome-stable /opt/render/project/chrome-bin/chrome
+    
+    # Definir variável
+    echo "export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable" >> ~/.bashrc
+    echo "export CHROME_BIN=/usr/bin/google-chrome-stable" >> ~/.bashrc
+    
+    echo "🎉 Chrome via apt configurado!"
+    exit 0
+fi
+
 echo "❌ Falha em todos os métodos de instalação do Chrome"
-exit 1
+echo "⚠️ O bot funcionará em modo limitado"
+exit 0
