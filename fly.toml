@@ -3,7 +3,6 @@ primary_region = 'gru'
 
 [build]
   dockerfile = "Dockerfile"
-  ignorefile = ".flyignore"
 
 [env]
   NODE_ENV = "production"
@@ -12,30 +11,14 @@ primary_region = 'gru'
   PUPPETEER_EXECUTABLE_PATH = "/usr/bin/google-chrome-stable"
   CHROME_BIN = "/usr/bin/google-chrome-stable"
 
-[processes]
-  app = "pm2-runtime start ecosystem.config.js --env production"
-
 [http_service]
   internal_port = 3000
   force_https = true
   auto_stop_machines = false
   auto_start_machines = true
   min_machines_running = 1
-  processes = ['app']
-
-  [http_service.concurrency]
-    type = "requests"
-    hard_limit = 100
-    soft_limit = 80
 
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
-  processes = ['app']
-
-[deploy]
-  strategy = "immediate"
-
-[experimental]
-  auto_rollback = true
