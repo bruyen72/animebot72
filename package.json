@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node --max-old-space-size=8192 index.js",
-    "build": "rm -f .npmrc && npm install --legacy-peer-deps"
+    "build": "rm -f .npmrc && npm install --legacy-peer-deps --force"
   },
   "repository": {
     "type": "git",
@@ -20,6 +20,7 @@
   "author": "bruyen72",
   "license": "AGPL-3.0",
   "dependencies": {
+    "@adiwajshing/baileys": "^5.0.0",
     "@whiskeysockets/baileys": "^6.7.17",
     "@bochilteam/scraper": "^4.0.22-alpha.0",
     "@develoka/angka-terbilang-js": "^1.4.2",
