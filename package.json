@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node --max-old-space-size=8192 index.js",
-    "build": "rm -f .npmrc && npm install --legacy-peer-deps --force"
+    "build": "npm install --legacy-peer-deps --force"
   },
   "repository": {
     "type": "git",
