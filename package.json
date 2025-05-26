@@ -26,9 +26,6 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "overrides": {
-    "@shineiichijo/marika": "3.0.1"
-  },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.17",
     "express": "^4.19.2",
@@ -79,7 +76,6 @@
     "youtubedl-core": "^4.11.7",
     "@develoka/angka-terbilang-js": "^1.4.2",
     "@fantox01/lyrics-scraper": "^1.0.1",
-    "@shineiichijo/marika": "^3.0.1",
     "cors": "^2.8.5",
     "helmet": "^7.1.0",
     "compression": "^1.7.4",
