@@ -3,6 +3,30 @@ require("./Core.js");
 
 const pino = require('pino');
 
+// ✅ VERIFICAÇÃO DE MODO LOCAL - ADICIONADO AQUI
+const useLocalDB = !global.mongodb || global.mongodb === "" || global.mongodb === "mongodb://localhost:27017/yakabot";
+
+if (useLocalDB) {
+    console.log("🚀 Modo local ativado - sem MongoDB");
+    
+    // Mock mongoose para evitar erros
+    global.mongoose = {
+        connect: () => Promise.resolve(),
+        disconnect: () => Promise.resolve(),
+        connection: {
+            on: () => {},
+            once: () => {},
+            readyState: 1
+        }
+    };
+    
+    // Não tentar conectar ao MongoDB
+    global.skipMongoConnect = true;
+} else {
+    console.log("🗄️ Modo MongoDB detectado");
+    global.skipMongoConnect = false;
+}
+
 // Import do Baileys com fallback
 let makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, jidDecode, proto, makeInMemoryStore;
 
@@ -22,9 +46,13 @@ try {
     if (!makeInMemoryStore) {
         makeInMemoryStore = () => ({
             bind: () => {},
-            loadMessage: () => null
+            loadMessage: () => null,
+            writeToFile: () => {},
+            readFromFile: () => {}
         });
     }
+    
+    console.log("✅ Baileys importado com sucesso");
 } catch (err) {
     console.error("❌ Erro ao importar Baileys:", err.message);
     process.exit(1);
@@ -44,6 +72,20 @@ const os = require('os');
 const { exec } = require('child_process');
 const util = require('util');
 const EventEmitter = require('events');
+
+// ✅ IMPORTAR MONGOOSE APENAS SE NECESSÁRIO
+let mongoose;
+if (!global.skipMongoConnect) {
+    try {
+        mongoose = require("mongoose");
+        console.log("✅ Mongoose carregado para conexão real");
+    } catch (e) {
+        console.log("⚠️ Mongoose não encontrado, usando sistema local");
+        global.skipMongoConnect = true;
+    }
+} else {
+    console.log("⚡ Mongoose não necessário - modo local ativo");
+}
 
 // Limpar listeners existentes para evitar duplicações
 function cleanupExistingListeners() {
@@ -77,19 +119,19 @@ global.listenersRegistered = {
 // Promisify exec para melhor controle
 const execPromise = util.promisify(exec);
 
-// Configuração de sistema otimizado
-global.YakaBot = null; // Referência global para acesso em manipuladores de erro
+// ✅ CONFIGURAÇÃO DE SISTEMA OTIMIZADA PARA RENDER
+global.YakaBot = null;
 const ULTRA_MODE = true;
 const AUTO_RECOVERY = true;
-const PERFORMANCE_MODE = "BALANCED"; // Mudado para BALANCED para maior estabilidade
+const PERFORMANCE_MODE = "RENDER_OPTIMIZED"; // Otimizado para Render
 
-// Configurações otimizadas para 6GB RAM
-const MAX_MEMORY_MB = 512; // Reduzido para ser mais conservador
-const MEMORY_THRESHOLD_WARNING = 0.70; // 70% do máximo
-const MEMORY_THRESHOLD_CRITICAL = 0.85; // 85% do máximo
-const AGGRESSIVE_MEMORY_CLEANUP = false; // Desativado por padrão para evitar limpezas excessivas
-const MEMORY_CHECK_INTERVAL = 120000; // Verificar memória a cada 2 minutos
-const CACHE_CLEANUP_INTERVAL = 30 * 60 * 1000; // Limpeza de cache a cada 30 minutos
+// ✅ CONFIGURAÇÕES OTIMIZADAS PARA RENDER FREE TIER
+const MAX_MEMORY_MB = useLocalDB ? 350 : 512; // Menos memória no modo local
+const MEMORY_THRESHOLD_WARNING = 0.70;
+const MEMORY_THRESHOLD_CRITICAL = 0.85;
+const AGGRESSIVE_MEMORY_CLEANUP = useLocalDB; // Mais agressivo no modo local
+const MEMORY_CHECK_INTERVAL = useLocalDB ? 60000 : 120000; // Verificar mais frequente no local
+const CACHE_CLEANUP_INTERVAL = useLocalDB ? 15 * 60 * 1000 : 30 * 60 * 1000; // Limpeza mais frequente
 
 // Diretórios de trabalho
 const SESSION_DIR = './baileys-session';
@@ -98,6 +140,24 @@ const TEMP_DIR = path.join(os.tmpdir(), 'yaka_temp');
 const CACHE_DIR = path.join(__dirname, './cache');
 const CACHE_FILE = path.join(CACHE_DIR, 'menu_cache.json');
 const LOG_DIR = path.join(__dirname, './logs');
+
+// ✅ CRIAR DIRETÓRIOS COM TRATAMENTO DE ERRO
+[TEMP_DIR, CACHE_DIR, LOG_DIR].forEach(dir => {
+    try {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+    } catch (e) {
+        console.log(`⚠️ Erro ao criar diretório ${dir}:`, e.message);
+    }
+});
+
+// ✅ CONFIGURAÇÕES DE VELOCIDADE PARA RENDER
+console.log(`🚀 Configuração ativa: ${PERFORMANCE_MODE}`);
+console.log(`💾 Memória alocada: ${MAX_MEMORY_MB}MB`);
+console.log(`⚡ Modo: ${useLocalDB ? 'Local (Ultra Rápido)' : 'Híbrido (MongoDB + Local)'}`);
+
+// Continue com o resto do seu código aqui...
 
 // Criar diretórios necessários
 [TEMP_DIR, CACHE_DIR, LOG_DIR].forEach(dir => {
