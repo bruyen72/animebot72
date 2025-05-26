@@ -1,5 +1,51 @@
-// Configuração do Puppeteer para Render
-process.env.PUPPETEER_EXECUTABLE_PATH = '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome';
+// Configuração do Puppeteer para Render - DETECÇÃO AUTOMÁTICA
+const fs = require('fs');
+const path = require('path');
+
+// Função para encontrar o Chrome automaticamente
+function findChromeExecutable() {
+  const possiblePaths = [
+    '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
+    '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.72/chrome-linux64/chrome',
+    '/opt/render/.cache/puppeteer/chrome/linux-130.0.6723.69/chrome-linux64/chrome',
+    '/opt/render/.cache/puppeteer/chrome/linux-131.0.6778.69/chrome-linux64/chrome',
+    process.env.CHROME_BIN,
+    process.env.PUPPETEER_EXECUTABLE_PATH
+  ].filter(Boolean);
+
+  // Busca dinâmica no diretório do Puppeteer
+  try {
+    const puppeteerDir = '/opt/render/.cache/puppeteer/chrome';
+    if (fs.existsSync(puppeteerDir)) {
+      const versions = fs.readdirSync(puppeteerDir);
+      for (const version of versions) {
+        const chromePath = path.join(puppeteerDir, version, 'chrome-linux64', 'chrome');
+        if (fs.existsSync(chromePath)) {
+          possiblePaths.unshift(chromePath);
+        }
+      }
+    }
+  } catch (error) {
+    console.log('[CHROME] Erro ao buscar dinamicamente:', error.message);
+  }
+
+  // Testa cada caminho
+  for (const chromePath of possiblePaths) {
+    if (chromePath && fs.existsSync(chromePath)) {
+      console.log(`[CHROME] ✅ Encontrado em: ${chromePath}`);
+      return chromePath;
+    }
+  }
+
+  console.log('[CHROME] ⚠️ Nenhum executável encontrado, usando padrão do sistema');
+  return null;
+}
+
+// Define o caminho do Chrome
+const chromeExecutable = findChromeExecutable();
+if (chromeExecutable) {
+  process.env.PUPPETEER_EXECUTABLE_PATH = chromeExecutable;
+}
 
 const puppeteer = require("puppeteer");
 
@@ -172,9 +218,9 @@ class PinterestImageScraper {
     }, 5 * 60 * 1000); // A cada 5 minutos
   }
 
-  // Cria instância de navegador otimizada
+  // Cria instância de navegador otimizada com fallbacks
   async createBrowserInstance() {
-    const browser = await puppeteer.launch({
+    const launchOptions = {
       headless: true,
       args: [
         "--no-sandbox",
@@ -201,17 +247,48 @@ class PinterestImageScraper {
         "--disable-client-side-phishing-detection"
       ],
       defaultViewport: { width: 1366, height: 768 },
-    });
-    
-    const instanceId = Date.now() + Math.random();
-    return {
-      browser,
-      inUse: false,
-      id: instanceId,
-      created: Date.now(),
-      lastUsed: Date.now(),
-      loginStatus: 'none' // none, logging, logged, failed
     };
+
+    // Tenta com executável personalizado primeiro
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      try {
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        const browser = await puppeteer.launch(launchOptions);
+        console.log(`[BROWSER] ✅ Criado com executablePath: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+        
+        const instanceId = Date.now() + Math.random();
+        return {
+          browser,
+          inUse: false,
+          id: instanceId,
+          created: Date.now(),
+          lastUsed: Date.now(),
+          loginStatus: 'none'
+        };
+      } catch (error) {
+        console.error(`[BROWSER] ❌ Falha com executablePath: ${error.message}`);
+      }
+    }
+
+    // Fallback: tenta sem executablePath (usa Chrome do sistema/bundled)
+    try {
+      delete launchOptions.executablePath;
+      const browser = await puppeteer.launch(launchOptions);
+      console.log('[BROWSER] ✅ Criado com Chrome padrão do sistema');
+      
+      const instanceId = Date.now() + Math.random();
+      return {
+        browser,
+        inUse: false,
+        id: instanceId,
+        created: Date.now(),
+        lastUsed: Date.now(),
+        loginStatus: 'none'
+      };
+    } catch (error) {
+      console.error(`[BROWSER] ❌ Falha com Chrome padrão: ${error.message}`);
+      throw new Error(`Não foi possível criar navegador: ${error.message}`);
+    }
   }
 
   // Gerenciamento inteligente de navegadores
