@@ -2,15 +2,34 @@ require("./config.js");
 require("./Core.js");
 
 const pino = require('pino');
-const {
-    default: makeWASocket,
-    DisconnectReason,
-    useMultiFileAuthState,
-    fetchLatestBaileysVersion,
-    jidDecode,
-    proto,
-    makeInMemoryStore
-} = require("@whiskeysockets/baileys");
+
+// Import do Baileys com fallback
+let makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, jidDecode, proto, makeInMemoryStore;
+
+try {
+    const baileys = require("@whiskeysockets/baileys");
+    ({
+        default: makeWASocket,
+        DisconnectReason,
+        useMultiFileAuthState,
+        fetchLatestBaileysVersion,
+        jidDecode,
+        proto,
+        makeInMemoryStore
+    } = baileys);
+    
+    // Se makeInMemoryStore não existir, usar fallback
+    if (!makeInMemoryStore) {
+        makeInMemoryStore = () => ({
+            bind: () => {},
+            loadMessage: () => null
+        });
+    }
+} catch (err) {
+    console.error("❌ Erro ao importar Baileys:", err.message);
+    process.exit(1);
+}
+
 const fs = require("fs");
 const chalk = require("chalk");
 const path = require("path");
