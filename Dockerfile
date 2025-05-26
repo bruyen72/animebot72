@@ -1,4 +1,4 @@
-FROM node:18-buster
+FROM node:20-buster
 
 # Instala dependências e Chrome
 RUN apt-get update && apt-get install -y \
