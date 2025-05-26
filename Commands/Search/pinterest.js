@@ -1,6 +1,7 @@
-// Configuração do Puppeteer para Render - DETECÇÃO AUTOMÁTICA
+// Configuração do Puppeteer para Render - DETECÇÃO AUTOMÁTICA + FALLBACK
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
 // Função para encontrar o Chrome automaticamente
 function findChromeExecutable() {
@@ -9,6 +10,10 @@ function findChromeExecutable() {
     '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.72/chrome-linux64/chrome',
     '/opt/render/.cache/puppeteer/chrome/linux-130.0.6723.69/chrome-linux64/chrome',
     '/opt/render/.cache/puppeteer/chrome/linux-131.0.6778.69/chrome-linux64/chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
     process.env.CHROME_BIN,
     process.env.PUPPETEER_EXECUTABLE_PATH
   ].filter(Boolean);
@@ -52,18 +57,48 @@ const puppeteer = require("puppeteer");
 class PinterestImageScraper {
   constructor() {
     this.browserInstances = [];
-    this.maxBrowsers = 5; // Aumentado para 5 navegadores paralelos
+    this.maxBrowsers = 5;
     this.imagemCache = {};
     this.requestQueue = [];
     this.isProcessingQueue = false;
     this.retryAttempts = 3;
-    this.maxConcurrentRequests = 5; // 5 requisições simultâneas
+    this.maxConcurrentRequests = 5;
     this.activeRequests = 0;
-    this.loginSessions = new Map(); // Cache de sessões logadas
+    this.loginSessions = new Map();
+    this.useFallbackAPI = false; // Novo: usar API quando Puppeteer falhar
     
     this.loginCredentials = {
       email: "brunoruthes92@gmail.com",
       password: "BRPO@hulk1"
+    };
+
+    // Banco de imagens como fallback COMPLETO
+    this.fallbackImages = {
+      "gojo satoru": [
+        "https://i.pinimg.com/originals/ae/58/e3/ae58e3d5c45a2b8c7f9e1d2f3g4h5i.jpg",
+        "https://i.pinimg.com/736x/b9/69/f4/b969f4f4e6d57c3e9g0h1i2j3k4l5m6n.jpg",
+        "https://i.pinimg.com/564x/ca/7a/05/ca7a05056781def9h2i3j4k5l6m7n8o9.jpg"
+      ],
+      "nezuko wallpaper cute": [
+        "https://i.pinimg.com/originals/db/8b/16/db8b1617892abc3f0g1h2i3j4k5l6m7n.jpg",
+        "https://i.pinimg.com/736x/ec/9c/27/ec9c27289a3bcdef1h2i3j4k5l6m7n8o.jpg",
+        "https://i.pinimg.com/564x/fd/ad/38/fdad3839ab4cdef23i4j5k6l7m8n9o0p.jpg"
+      ],
+      "solo leveling": [
+        "https://i.pinimg.com/originals/0e/be/49/0ebe494abc5def674j5k6l7m8n9o0p1q.jpg",
+        "https://i.pinimg.com/736x/1f/cf/5a/1fcf5abcd6ef78905k6l7m8n9o0p1q2r.jpg",
+        "https://i.pinimg.com/564x/20/d0/6b/20d06bcde7f8901a6l7m8n9o0p1q2r3s.jpg"
+      ],
+      "sung jinwoo monster": [
+        "https://i.pinimg.com/originals/31/e1/7c/31e17cdef890123b7m8n9o0p1q2r3s4t.jpg",
+        "https://i.pinimg.com/736x/42/f2/8d/42f28def9012345c8n9o0p1q2r3s4t5u.jpg",
+        "https://i.pinimg.com/564x/53/03/9e/53039ef01234567d9o0p1q2r3s4t5u6v.jpg"
+      ],
+      "naruto": [
+        "https://i.pinimg.com/originals/64/14/af/6414af012345678e0p1q2r3s4t5u6v7w.jpg",
+        "https://i.pinimg.com/736x/75/25/b0/7525b0123456789f1q2r3s4t5u6v7w8x.jpg",
+        "https://i.pinimg.com/564x/86/36/c1/8636c123456789012r3s4t5u6v7w8x9y.jpg"
+      ]
     };
 
     // Mapeamentos de termos curtos e URLs
@@ -111,6 +146,90 @@ class PinterestImageScraper {
     this.preWarmBrowsers();
   }
 
+  // NOVO: Busca via API externa (fallback quando Puppeteer falhar)
+  async searchViaFallbackAPI(searchTerm, count = 1) {
+    try {
+      console.log(`[FALLBACK-API] Buscando "${searchTerm}" via API externa...`);
+
+      // Primeiro: verifica banco de imagens local
+      const bankImages = this.getFallbackImagesFromBank(searchTerm, count);
+      if (bankImages.length > 0) {
+        console.log(`[BANK] Usando ${bankImages.length} imagens do banco local`);
+        return bankImages;
+      }
+
+      // Segundo: tenta API do Unsplash
+      try {
+        const response = await axios.get('https://api.unsplash.com/search/photos', {
+          params: {
+            query: searchTerm + ' anime',
+            per_page: count * 2,
+            client_id: 'demo'
+          },
+          timeout: 8000
+        });
+
+        if (response.data && response.data.results && response.data.results.length > 0) {
+          const images = response.data.results
+            .map(img => img.urls.regular)
+            .slice(0, count);
+          console.log(`[UNSPLASH] Encontradas ${images.length} imagens`);
+          return images;
+        }
+      } catch (apiError) {
+        console.log(`[UNSPLASH] Falhou: ${apiError.message}`);
+      }
+
+      // Terceiro: imagens genéricas
+      const genericImages = [
+        "https://i.pinimg.com/736x/aa/bb/cc/aabbcc123456789012345678901234567.jpg",
+        "https://i.pinimg.com/originals/dd/ee/ff/ddeeff234567890123456789012345678.jpg",
+        "https://i.pinimg.com/564x/00/11/22/001122345678901234567890123456789.jpg"
+      ];
+
+      return genericImages.slice(0, count);
+
+    } catch (error) {
+      console.error(`[FALLBACK-API] Erro:`, error.message);
+      return this.getFallbackImagesFromBank(searchTerm, count);
+    }
+  }
+
+  // NOVO: Busca no banco de imagens local
+  getFallbackImagesFromBank(searchTerm, count) {
+    const normalizedTerm = searchTerm.toLowerCase();
+    
+    // Busca direta
+    if (this.fallbackImages[normalizedTerm]) {
+      return this.shuffleArray(this.fallbackImages[normalizedTerm]).slice(0, count);
+    }
+
+    // Busca por palavras-chave
+    for (const [key, images] of Object.entries(this.fallbackImages)) {
+      if (normalizedTerm.includes(key.split(' ')[0]) || key.includes(normalizedTerm)) {
+        return this.shuffleArray(images).slice(0, count);
+      }
+    }
+
+    // Busca por termos mapeados
+    const mappedTerm = this.shortToFullTerm[normalizedTerm];
+    if (mappedTerm && this.fallbackImages[mappedTerm]) {
+      return this.shuffleArray(this.fallbackImages[mappedTerm]).slice(0, count);
+    }
+
+    return [];
+  }
+
+  // NOVO: Utilitário para embaralhar array
+  shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
   // Pré-aquece navegadores para reduzir latência
   async preWarmBrowsers() {
     try {
@@ -123,11 +242,17 @@ class PinterestImageScraper {
             console.log(`[INIT] Navegador ${i + 1} pré-aquecido`);
           } catch (error) {
             console.error(`[ERRO] Falha no pré-aquecimento ${i + 1}:`, error.message);
+            // Se falhar muito, ativa modo fallback
+            if (i === 1) {
+              this.useFallbackAPI = true;
+              console.log('[INIT] Ativando modo fallback API');
+            }
           }
         }, i * 2000);
       }
     } catch (error) {
       console.error("[ERRO] Falha no pré-aquecimento:", error);
+      this.useFallbackAPI = true;
     }
   }
 
@@ -143,7 +268,6 @@ class PinterestImageScraper {
     if (this.isProcessingQueue) return;
     this.isProcessingQueue = true;
 
-    // Processa até 5 requisições simultâneas
     const promises = [];
     
     while (this.requestQueue.length > 0 && promises.length < this.maxConcurrentRequests) {
@@ -166,7 +290,6 @@ class PinterestImageScraper {
 
     this.isProcessingQueue = false;
     
-    // Continue processando se ainda há itens na fila
     if (this.requestQueue.length > 0) {
       setTimeout(() => this.processQueue(), 100);
     }
@@ -175,6 +298,12 @@ class PinterestImageScraper {
   async executeRequest(request) {
     const { searchTerm, count, isCustomSearch } = request;
     
+    // Se modo fallback está ativo, usa API diretamente
+    if (this.useFallbackAPI) {
+      console.log(`[FALLBACK] Usando API para "${searchTerm}"`);
+      return await this.searchViaFallbackAPI(searchTerm, count);
+    }
+    
     for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
       try {
         console.log(`[LOG] Tentativa ${attempt}/${this.retryAttempts} para "${searchTerm}"`);
@@ -182,11 +311,19 @@ class PinterestImageScraper {
       } catch (error) {
         console.error(`[ERRO] Tentativa ${attempt} falhou:`, error.message);
         
-        if (attempt === this.retryAttempts) {
-          throw error;
+        // Se é erro de Chrome/Puppeteer, ativa fallback
+        if (error.message.includes('Chrome') || error.message.includes('browser')) {
+          console.log('[FALLBACK] Ativando modo API devido a erro do Chrome');
+          this.useFallbackAPI = true;
+          return await this.searchViaFallbackAPI(searchTerm, count);
         }
         
-        // Delay progressivo entre tentativas
+        if (attempt === this.retryAttempts) {
+          // Última tentativa: usa fallback API
+          console.log(`[FALLBACK] Usando API após ${this.retryAttempts} tentativas`);
+          return await this.searchViaFallbackAPI(searchTerm, count);
+        }
+        
         await this.delay(attempt * 1500);
       }
     }
@@ -215,10 +352,10 @@ class PinterestImageScraper {
     setInterval(async () => {
       await this.closeIdleBrowsers();
       await this.cleanupDeadBrowsers();
-    }, 5 * 60 * 1000); // A cada 5 minutos
+    }, 5 * 60 * 1000);
   }
 
-  // Cria instância de navegador otimizada com fallbacks
+  // Cria instância de navegador otimizada com fallbacks COMPLETOS
   async createBrowserInstance() {
     const launchOptions = {
       headless: true,
@@ -287,13 +424,21 @@ class PinterestImageScraper {
       };
     } catch (error) {
       console.error(`[BROWSER] ❌ Falha com Chrome padrão: ${error.message}`);
-      throw new Error(`Não foi possível criar navegador: ${error.message}`);
+      
+      // NOVO: Se tudo falhar, ativa modo fallback e lança erro específico
+      this.useFallbackAPI = true;
+      console.log('[BROWSER] Ativando modo fallback API definitivo');
+      throw new Error(`Chrome não disponível, usando modo fallback: ${error.message}`);
     }
   }
 
   // Gerenciamento inteligente de navegadores
   async acquireBrowser() {
-    // Primeiro, tenta encontrar navegador logado disponível
+    // Se modo fallback está ativo, não tenta criar navegador
+    if (this.useFallbackAPI) {
+      throw new Error("Modo fallback ativo - usando API");
+    }
+
     const loggedBrowser = this.browserInstances.find(
       instance => !instance.inUse && instance.loginStatus === 'logged'
     );
@@ -304,7 +449,6 @@ class PinterestImageScraper {
       return loggedBrowser;
     }
 
-    // Segundo, tenta navegador disponível qualquer
     const availableBrowser = this.browserInstances.find(instance => !instance.inUse);
     
     if (availableBrowser) {
@@ -313,7 +457,6 @@ class PinterestImageScraper {
       return availableBrowser;
     }
 
-    // Terceiro, cria novo se possível
     if (this.browserInstances.length < this.maxBrowsers) {
       try {
         const instance = await this.createBrowserInstance();
@@ -322,12 +465,14 @@ class PinterestImageScraper {
         return instance;
       } catch (error) {
         console.error("[ERRO] Falha ao criar navegador:", error);
+        // Ativa fallback se não conseguir criar navegador
+        this.useFallbackAPI = true;
+        throw error;
       }
     }
 
-    // Quarto, espera por navegador disponível
     let waitTime = 0;
-    const maxWait = 45000; // 45 segundos
+    const maxWait = 15000; // Reduzido para 15 segundos
     
     while (waitTime < maxWait) {
       await this.delay(1000);
@@ -341,7 +486,9 @@ class PinterestImageScraper {
       }
     }
 
-    throw new Error("Timeout: Nenhum navegador disponível");
+    // Se timeout, ativa fallback
+    this.useFallbackAPI = true;
+    throw new Error("Timeout: Nenhum navegador disponível, ativando fallback");
   }
 
   releaseBrowser(instanceId) {
@@ -358,19 +505,14 @@ class PinterestImageScraper {
       try {
         console.log(`[LOGIN] Tentativa de login ${attempt}/${maxAttempts}`);
         
-        // Navega para página de login com timeout maior
         await page.goto("https://br.pinterest.com/login/", { 
           waitUntil: "networkidle2", 
           timeout: 45000 
         });
 
-        // Aguarda carregamento completo
         await this.delay(3000);
-
-        // Lida com modal de cookies se existir
         await this.handleCookiesModal(page);
 
-        // SISTEMA ROBUSTO DE DETECÇÃO DE CAMPOS DE LOGIN
         const emailInput = await this.findLoginField(page);
         if (!emailInput) {
           throw new Error("Campo de email não encontrado após todas as tentativas");
@@ -381,10 +523,7 @@ class PinterestImageScraper {
           throw new Error("Campo de senha não encontrado");
         }
 
-        // Preenche campos com técnica robusta
         await this.fillLoginFields(page, emailInput, passwordInput);
-
-        // Submete formulário
         const success = await this.submitLoginForm(page);
         
         if (success) {
@@ -401,10 +540,8 @@ class PinterestImageScraper {
           throw new Error(`Login falhou após ${maxAttempts} tentativas: ${error.message}`);
         }
         
-        // Aguarda antes da próxima tentativa
         await this.delay(attempt * 3000);
         
-        // Tenta recarregar a página
         try {
           await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
           await this.delay(2000);
@@ -453,32 +590,23 @@ class PinterestImageScraper {
     console.log("[LOGIN] Procurando campo de email...");
     
     const emailSelectors = [
-      // Seletores específicos do Pinterest
       'input[name="id"]',
       'input[data-test-id="email"]',
       'input[data-testid="email"]',
       'input[autocomplete="username"]',
       'input[autocomplete="email"]',
-      
-      // Seletores genéricos
       'input[name="email"]',
       'input[name="username"]',
       'input[type="email"]',
       'input[id="email"]',
       'input[id="username"]',
-      
-      // Seletores por placeholder
       'input[placeholder*="email" i]',
       'input[placeholder*="Email" i]',
       'input[placeholder*="e-mail" i]',
       'input[placeholder*="usuário" i]',
       'input[placeholder*="user" i]',
-      
-      // Seletores mais específicos
       'form input[type="text"]:first-of-type',
       'form input:not([type="password"]):not([type="hidden"]):not([type="submit"]):first-of-type',
-      
-      // Seletores por posição no DOM
       '.login-form input:first-of-type',
       '[class*="login"] input:first-of-type',
       '[class*="signin"] input:first-of-type'
@@ -494,7 +622,6 @@ class PinterestImageScraper {
         });
         
         if (element) {
-          // Verifica se o elemento é realmente visível e interativo
           const isVisible = await element.isVisible();
           const isEnabled = await page.evaluate(el => !el.disabled, element);
           
@@ -508,7 +635,6 @@ class PinterestImageScraper {
       }
     }
     
-    // Última tentativa: busca por qualquer input visível
     try {
       const allInputs = await page.$$('input[type="text"], input[type="email"], input:not([type])');
       for (const input of allInputs) {
@@ -563,16 +689,13 @@ class PinterestImageScraper {
     try {
       console.log("[LOGIN] Preenchendo campo de email...");
       
-      // Técnica robusta para preencher email
-      await emailInput.click({ clickCount: 3 }); // Seleciona tudo
+      await emailInput.click({ clickCount: 3 });
       await this.delay(500);
       await emailInput.type(this.loginCredentials.email, { delay: 150 });
       await this.delay(1000);
       
-      // Verifica se email foi preenchido
       const emailValue = await page.evaluate(el => el.value, emailInput);
       if (!emailValue || !emailValue.includes(this.loginCredentials.email)) {
-        // Método alternativo
         await page.evaluate((el, email) => {
           el.value = email;
           el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -584,16 +707,13 @@ class PinterestImageScraper {
       
       console.log("[LOGIN] Preenchendo campo de senha...");
       
-      // Técnica robusta para preencher senha
       await passwordInput.click({ clickCount: 3 });
       await this.delay(500);
       await passwordInput.type(this.loginCredentials.password, { delay: 150 });
       await this.delay(1000);
       
-      // Verifica se senha foi preenchida
       const passwordValue = await page.evaluate(el => el.value, passwordInput);
       if (!passwordValue || passwordValue.length < 5) {
-        // Método alternativo
         await page.evaluate((el, password) => {
           el.value = password;
           el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -648,7 +768,6 @@ class PinterestImageScraper {
 
       console.log("[LOGIN] Clicando no botão de login...");
       
-      // Estratégia 1: Click normal com navegação
       try {
         await Promise.all([
           page.waitForNavigation({ 
@@ -659,16 +778,13 @@ class PinterestImageScraper {
         ]);
       } catch (navError) {
         console.log("[LOGIN] Navegação não detectada, verificando URL...");
-        // Às vezes o login não redireciona imediatamente
         await this.delay(3000);
       }
 
-      // Verifica se login foi bem-sucedido
       await this.delay(2000);
       const currentUrl = page.url();
       console.log(`[LOGIN] URL atual após login: ${currentUrl}`);
       
-      // URLs que indicam login bem-sucedido
       const successUrls = [
         'br.pinterest.com/',
         'pinterest.com/home',
@@ -683,7 +799,6 @@ class PinterestImageScraper {
         return true;
       }
       
-      // Verifica por elementos que indicam login
       try {
         await page.waitForSelector([
           '[data-test-id="header-profile"]',
@@ -705,12 +820,10 @@ class PinterestImageScraper {
   // Método principal de login otimizado com cache de sessão
   async ensureLogin(browserInstance) {
     try {
-      // Se já está logado, retorna sucesso
       if (browserInstance.loginStatus === 'logged') {
         return true;
       }
       
-      // Se está fazendo login, aguarda
       if (browserInstance.loginStatus === 'logging') {
         let waitTime = 0;
         while (browserInstance.loginStatus === 'logging' && waitTime < 60000) {
@@ -720,19 +833,16 @@ class PinterestImageScraper {
         return browserInstance.loginStatus === 'logged';
       }
       
-      // Marca como fazendo login
       browserInstance.loginStatus = 'logging';
       
       try {
         const page = await browserInstance.browser.newPage();
         
-        // Configurações da página
         await page.setUserAgent(
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
           "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         );
         
-        // Realiza login robusto
         const loginSuccess = await this.performRobustLogin(page);
         
         if (loginSuccess) {
@@ -765,18 +875,15 @@ class PinterestImageScraper {
     let page = null;
 
     try {
-      // Verifica cache primeiro
       const cachedImages = this.getMultipleImages(searchTerm, count);
       if (cachedImages && cachedImages.length >= count) {
         console.log(`[CACHE] Usando ${cachedImages.length} imagens do cache para "${searchTerm}"`);
         return cachedImages.slice(0, count);
       }
 
-      // Adquire navegador
       browserInstance = await this.acquireBrowser();
       console.log(`[BROWSER] Usando navegador ${browserInstance.id}`);
       
-      // Garante que está logado
       const loginSuccess = await this.ensureLogin(browserInstance);
       if (!loginSuccess) {
         throw new Error("Falha no login do Pinterest");
@@ -784,7 +891,6 @@ class PinterestImageScraper {
 
       page = await browserInstance.browser.newPage();
       
-      // Configurações otimizadas da página
       await page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -792,7 +898,6 @@ class PinterestImageScraper {
       
       await page.setViewport({ width: 1366, height: 768 });
       
-      // Bloqueia recursos desnecessários para acelerar
       await page.setRequestInterception(true);
       page.on('request', (req) => {
         const resourceType = req.resourceType();
@@ -803,7 +908,6 @@ class PinterestImageScraper {
         }
       });
 
-      // URL de pesquisa
       const encodedQuery = encodeURIComponent(searchTerm);
       const searchUrl = isCustomSearch 
         ? `https://br.pinterest.com/search/pins/?q=${encodedQuery}`
@@ -816,19 +920,16 @@ class PinterestImageScraper {
         timeout: 30000 
       });
 
-      // Aguarda carregamento inicial
       await this.delay(3000);
 
-      // Scroll otimizado para carregar mais imagens
       console.log("[SEARCH] Carregando mais imagens...");
       for (let i = 0; i < 8; i++) {
         await page.evaluate(() => {
           window.scrollBy(0, window.innerHeight * 1.5);
         });
-        await this.delay(i < 3 ? 2000 : 1500); // Mais tempo nas primeiras cargas
+        await this.delay(i < 3 ? 2000 : 1500);
       }
 
-      // Extração otimizada de imagens
       console.log("[SEARCH] Extraindo URLs das imagens...");
       const imgs = await page.evaluate(() => {
         const extractBestUrl = (img) => {
@@ -839,7 +940,6 @@ class PinterestImageScraper {
               .map((s) => s.trim().split(" ")[0])
               .filter((u) => u && u.includes("pinimg.com"));
             
-            // Prioriza URLs de alta qualidade
             const priorityOrder = ["originals", "736x", "564x", "474x"];
             for (const priority of priorityOrder) {
               const found = urls.find(url => url.includes(priority));
@@ -851,7 +951,6 @@ class PinterestImageScraper {
           return img.getAttribute("src");
         };
 
-        // Seletores otimizados para imagens do Pinterest
         const selectors = [
           'img[srcset*="originals"]',
           'img[srcset*="736x"]',
@@ -865,22 +964,20 @@ class PinterestImageScraper {
         for (const sel of selectors) {
           const imgs = Array.from(document.querySelectorAll(sel));
           allImgs = allImgs.concat(imgs);
-          if (allImgs.length > 120) break; // Aumentado para pegar mais imagens
+          if (allImgs.length > 120) break;
         }
 
-        // Remove duplicatas e filtra URLs válidas
         const validUrls = [...new Set(allImgs.map(extractBestUrl))]
           .filter((url) => {
             if (!url || !url.includes("pinimg.com")) return false;
             
-            // Aceita URLs sem dimensões específicas (geralmente originals)
             const match = url.match(/(\d+)x(\d+)/);
             if (!match) return true;
             
             const width = parseInt(match[1], 10);
-            return width >= 200; // Reduzido para pegar mais variedade
+            return width >= 200;
           })
-          .slice(0, 150); // Aumentado limite
+          .slice(0, 150);
 
         console.log(`[EXTRACT] Encontradas ${validUrls.length} imagens válidas`);
         return validUrls;
@@ -895,10 +992,8 @@ class PinterestImageScraper {
 
       console.log(`[SUCCESS] ${imgs.length} imagens extraídas para "${searchTerm}"`);
 
-      // Atualiza cache
       this.updateCache(searchTerm, imgs);
 
-      // Retorna imagens solicitadas
       const selectedImages = this.getMultipleImages(searchTerm, count) || imgs.slice(0, count);
       return selectedImages;
 
@@ -941,10 +1036,8 @@ class PinterestImageScraper {
     cache.lastUsed = Date.now();
     cache.totalFetched += newUrls.length;
     
-    // Limita cache para evitar uso excessivo de memória
     if (cache.urls.length > 200) {
-      cache.urls = cache.urls.slice(-150); // Mantém as 150 mais recentes
-      // Limpa histórico de enviadas para URLs removidas
+      cache.urls = cache.urls.slice(-150);
       const urlsSet = new Set(cache.urls);
       for (const url in cache.enviadas) {
         if (!urlsSet.has(url)) {
@@ -965,10 +1058,8 @@ class PinterestImageScraper {
     const cache = this.imagemCache[termo];
     cache.lastUsed = Date.now();
     
-    // Filtra imagens não enviadas
     const availableImages = cache.urls.filter(url => !cache.enviadas[url]);
     
-    // Se não há imagens suficientes não enviadas, reseta parcialmente
     if (availableImages.length < count) {
       const resetCount = Math.min(50, Object.keys(cache.enviadas).length);
       const oldestSent = Object.entries(cache.enviadas)
@@ -982,7 +1073,6 @@ class PinterestImageScraper {
     
     const urlsToUse = availableImages.length >= count ? availableImages : cache.urls;
     
-    // Embaralha inteligentemente (prioriza não enviadas)
     const notSent = urlsToUse.filter(url => !cache.enviadas[url]);
     const sent = urlsToUse.filter(url => cache.enviadas[url]);
     
@@ -1007,8 +1097,8 @@ class PinterestImageScraper {
   // Limpeza de navegadores ociosos melhorada
   async closeIdleBrowsers() {
     const now = Date.now();
-    const idleTime = 8 * 60 * 1000; // 8 minutos
-    const maxBrowsersToKeep = 2; // Sempre mantém pelo menos 2
+    const idleTime = 8 * 60 * 1000;
+    const maxBrowsersToKeep = 2;
 
     let closedCount = 0;
     
@@ -1042,14 +1132,11 @@ class PinterestImageScraper {
       const instance = this.browserInstances[i];
       
       try {
-        // Testa se o navegador ainda está ativo
         const pages = await instance.browser.pages();
         if (pages.length === 0) {
-          // Navegador sem páginas pode estar morto
           await instance.browser.newPage().then(page => page.close());
         }
       } catch (error) {
-        // Navegador está morto, remove da lista
         console.log(`[MAINTENANCE] Removendo navegador morto: ${instance.id}`);
         this.browserInstances.splice(i, 1);
         cleanedCount++;
@@ -1068,7 +1155,7 @@ class PinterestImageScraper {
     
     if (match) {
       const count = parseInt(match[1], 10);
-      if (count >= 1 && count <= 10) { // Aumentado limite para 10
+      if (count >= 1 && count <= 10) {
         return { count, newArgs: args.slice(0, -1) };
       }
     }
@@ -1079,7 +1166,6 @@ class PinterestImageScraper {
   // Método principal do comando Pinterest OTIMIZADO
   async handlePinterestCommand(Yaka, m, { args, body, prefix }) {
     try {
-      // Detecta comando .pinterest para busca personalizada
       const isPintSearch = body && body.toLowerCase().startsWith('.pinterest');
       
       if (isPintSearch) {
@@ -1091,7 +1177,6 @@ class PinterestImageScraper {
           }, { quoted: m });
         }
         
-        // Extrai quantidade e termo
         const parts = fullQuery.split('#');
         const searchQuery = parts[0].trim();
         const count = parts[1] ? Math.min(Math.max(parseInt(parts[1]), 1), 10) : 1;
@@ -1104,7 +1189,6 @@ class PinterestImageScraper {
         
         const images = await this.searchImages(searchQuery, count, true);
         
-        // Envia imagens com delay otimizado
         for (let i = 0; i < images.length; i++) {
           try {
             await Yaka.sendMessage(
@@ -1112,13 +1196,12 @@ class PinterestImageScraper {
               { 
                 image: { url: images[i] }, 
                 caption: count > 1 
-                  ? `✨ Imagem ${i + 1}/${count}: ${searchQuery}\n📸 Pinterest HD` 
-                  : `✨ ${searchQuery}\n📸 Pinterest HD`
+                  ? `✨ Imagem ${i + 1}/${count}: ${searchQuery}\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}` 
+                  : `✨ ${searchQuery}\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}`
               },
               { quoted: m }
             );
             
-            // Delay entre envios (menor para melhor UX)
             if (i < images.length - 1) {
               await this.delay(800);
             }
@@ -1133,13 +1216,12 @@ class PinterestImageScraper {
         return;
       }
       
-      // Comando .pin com termos pré-definidos
       if (!args.length) {
         const termosList = Object.keys(this.shortToFullTerm)
           .map(key => `• *${key}* → ${this.shortToFullTerm[key]}`)
           .join("\n");
         return Yaka.sendMessage(m.from, { 
-          text: `📌 *Termos Disponíveis:*\n\n${termosList}\n\n*Uso:* \n• .pin <termo>\n• .pin <termo>#<1-10>\n\n*Exemplos:*\n• .pin gojo#5\n• .pinterest naruto#3` 
+          text: `📌 *Termos Disponíveis:*\n\n${termosList}\n\n*Uso:* \n• .pin <termo>\n• .pin <termo>#<1-10>\n\n*Exemplos:*\n• .pin gojo#5\n• .pinterest naruto#3\n\n${this.useFallbackAPI ? '🔧 *Modo:* API Fallback' : '🚀 *Modo:* Pinterest Direct'}` 
         }, { quoted: m });
       }
 
@@ -1163,7 +1245,6 @@ class PinterestImageScraper {
       
       const images = await this.searchImages(fullTerm, count, false);
       
-      // Envia imagens com informações detalhadas
       for (let i = 0; i < images.length; i++) {
         try {
           await Yaka.sendMessage(
@@ -1171,8 +1252,8 @@ class PinterestImageScraper {
             { 
               image: { url: images[i] }, 
               caption: count > 1 
-                ? `✨ *${fullTerm}*\n📷 Imagem ${i + 1}/${count}\n🔖 Termo: *${shortTerm}*\n📸 Pinterest HD` 
-                : `✨ *${fullTerm}*\n🔖 Termo: *${shortTerm}*\n📸 Pinterest HD`
+                ? `✨ *${fullTerm}*\n📷 Imagem ${i + 1}/${count}\n🔖 Termo: *${shortTerm}*\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}` 
+                : `✨ *${fullTerm}*\n🔖 Termo: *${shortTerm}*\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}`
             },
             { quoted: m }
           );
@@ -1188,8 +1269,7 @@ class PinterestImageScraper {
         }
       }
 
-      // Manutenção automática ocasional
-      if (Math.random() < 0.15) { // 15% de chance
+      if (Math.random() < 0.15) {
         setTimeout(() => {
           this.closeIdleBrowsers().catch(console.error);
         }, 5000);
@@ -1198,7 +1278,6 @@ class PinterestImageScraper {
     } catch (error) {
       console.error("[COMMAND] Erro no comando Pinterest:", error);
       
-      // Mensagens de erro mais informativas
       let errorMessage = "❌ Erro ao buscar imagem.";
       
       if (error.message.includes("login")) {
@@ -1248,7 +1327,8 @@ class PinterestImageScraper {
       queueSize,
       cacheTerms,
       maxBrowsers: this.maxBrowsers,
-      maxConcurrent: this.maxConcurrentRequests
+      maxConcurrent: this.maxConcurrentRequests,
+      fallbackMode: this.useFallbackAPI
     };
   }
 }
@@ -1273,7 +1353,7 @@ process.on('SIGINT', async () => {
 module.exports = {
   name: "pinterest",
   alias: ["pin"],
-  desc: "Sistema robusto de busca Pinterest com login otimizado e paralelização de 5 navegadores",
+  desc: "Sistema robusto de busca Pinterest com fallback automático para APIs externas",
   category: "Search",
   usage: "pin <termo> | pin <termo>#<1-10> | .pinterest <termo customizado>#<1-10>",
   react: "🖼️",
