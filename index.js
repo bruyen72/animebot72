@@ -3,7 +3,7 @@ require("./Core.js");
 
 const pino = require('pino');
 
-// ✅ VERIFICAÇÃO DE MODO LOCAL - ADICIONADO AQUI
+// ✅ VERIFICAÇÃO DE MODO LOCAL
 const useLocalDB = !global.mongodb || global.mongodb === "" || global.mongodb === "mongodb://localhost:27017/yakabot";
 
 if (useLocalDB) {
@@ -25,6 +25,15 @@ if (useLocalDB) {
 } else {
     console.log("🗄️ Modo MongoDB detectado");
     global.skipMongoConnect = false;
+    
+    // ✅ CARREGAR MONGOOSE APENAS QUANDO NECESSÁRIO
+    try {
+        global.mongoose = require("mongoose");
+        console.log("✅ Mongoose carregado para conexão real");
+    } catch (e) {
+        console.log("⚠️ Mongoose não encontrado, usando sistema local");
+        global.skipMongoConnect = true;
+    }
 }
 
 // Import do Baileys com fallback
@@ -73,20 +82,6 @@ const { exec } = require('child_process');
 const util = require('util');
 const EventEmitter = require('events');
 
-// ✅ IMPORTAR MONGOOSE APENAS SE NECESSÁRIO
-let mongoose;
-if (!global.skipMongoConnect) {
-    try {
-        mongoose = require("mongoose");
-        console.log("✅ Mongoose carregado para conexão real");
-    } catch (e) {
-        console.log("⚠️ Mongoose não encontrado, usando sistema local");
-        global.skipMongoConnect = true;
-    }
-} else {
-    console.log("⚡ Mongoose não necessário - modo local ativo");
-}
-
 // Limpar listeners existentes para evitar duplicações
 function cleanupExistingListeners() {
     process.removeAllListeners('uncaughtException');
@@ -123,15 +118,15 @@ const execPromise = util.promisify(exec);
 global.YakaBot = null;
 const ULTRA_MODE = true;
 const AUTO_RECOVERY = true;
-const PERFORMANCE_MODE = "RENDER_OPTIMIZED"; // Otimizado para Render
+const PERFORMANCE_MODE = "RENDER_OPTIMIZED";
 
 // ✅ CONFIGURAÇÕES OTIMIZADAS PARA RENDER FREE TIER
-const MAX_MEMORY_MB = useLocalDB ? 350 : 512; // Menos memória no modo local
+const MAX_MEMORY_MB = useLocalDB ? 350 : 512;
 const MEMORY_THRESHOLD_WARNING = 0.70;
 const MEMORY_THRESHOLD_CRITICAL = 0.85;
-const AGGRESSIVE_MEMORY_CLEANUP = useLocalDB; // Mais agressivo no modo local
-const MEMORY_CHECK_INTERVAL = useLocalDB ? 60000 : 120000; // Verificar mais frequente no local
-const CACHE_CLEANUP_INTERVAL = useLocalDB ? 15 * 60 * 1000 : 30 * 60 * 1000; // Limpeza mais frequente
+const AGGRESSIVE_MEMORY_CLEANUP = useLocalDB;
+const MEMORY_CHECK_INTERVAL = useLocalDB ? 60000 : 120000;
+const CACHE_CLEANUP_INTERVAL = useLocalDB ? 15 * 60 * 1000 : 30 * 60 * 1000;
 
 // Diretórios de trabalho
 const SESSION_DIR = './baileys-session';
@@ -141,8 +136,8 @@ const CACHE_DIR = path.join(__dirname, './cache');
 const CACHE_FILE = path.join(CACHE_DIR, 'menu_cache.json');
 const LOG_DIR = path.join(__dirname, './logs');
 
-// ✅ CRIAR DIRETÓRIOS COM TRATAMENTO DE ERRO
-[TEMP_DIR, CACHE_DIR, LOG_DIR].forEach(dir => {
+// ✅ CRIAR DIRETÓRIOS COM TRATAMENTO DE ERRO (SEM DUPLICAÇÃO)
+[TEMP_DIR, CACHE_DIR, LOG_DIR, SESSION_DIR].forEach(dir => {
     try {
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
@@ -152,23 +147,9 @@ const LOG_DIR = path.join(__dirname, './logs');
     }
 });
 
-// ✅ CONFIGURAÇÕES DE VELOCIDADE PARA RENDER
-console.log(`🚀 Configuração ativa: ${PERFORMANCE_MODE}`);
-console.log(`💾 Memória alocada: ${MAX_MEMORY_MB}MB`);
-console.log(`⚡ Modo: ${useLocalDB ? 'Local (Ultra Rápido)' : 'Híbrido (MongoDB + Local)'}`);
-
-// Continue com o resto do seu código aqui...
-
-// Criar diretórios necessários
-[TEMP_DIR, CACHE_DIR, LOG_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-});
-
 // Limites de reconexão ajustados
-const MAX_RECONNECT_ATTEMPTS = 8; // Reduzido para evitar loops longos
-const BASE_RECONNECT_DELAY = 5000; // Aumentado para dar mais tempo
+const MAX_RECONNECT_ATTEMPTS = 8;
+const BASE_RECONNECT_DELAY = 5000;
 const MAX_RECONNECT_DELAY = 60000;
 let reconnectCounter = 0;
 let lastReconnectTime = 0;
@@ -197,8 +178,8 @@ const logger = pino({
 // Store com mínimo consumo de memória
 const store = makeInMemoryStore({
     logger: pino({ level: 'silent' }),
-    maxCachedMessages: 5, // Minimizado para economizar memória
-    clearInterval: 7200000 // Limpar a cada 2 horas
+    maxCachedMessages: 5,
+    clearInterval: 7200000
 });
 
 // Importações otimizadas
@@ -208,7 +189,6 @@ const welcomeLeft = require('./Processes/welcome.js');
 const { Collection, Simple } = require("./lib");
 const { serialize } = Simple;
 const Auth = require('./Processes/Auth');
-const mongoose = require("mongoose");
 
 // Configuração principal
 const prefix = global.prefa;
@@ -233,20 +213,27 @@ const memoryWarnings = [];
 const connectionHistory = [];
 
 // Configurações de rate limiting
-let MESSAGE_LIMIT = 5; // Reduzido para mais estabilidade
-let COOLDOWN_PERIOD = 3500; // Aumentado para menos carga
-const GROUP_MESSAGE_LIMIT = 20; // Reduzido para grupos
-const GROUP_COOLDOWN_PERIOD = 7000; // Aumentado para mais estabilidade
+let MESSAGE_LIMIT = 5;
+let COOLDOWN_PERIOD = 3500;
+const GROUP_MESSAGE_LIMIT = 20;
+const GROUP_COOLDOWN_PERIOD = 7000;
 
 // Para processamento paralelo de comandos pesados
-const MAX_PARALLEL_HEAVY_COMMANDS = 1; // Reduzido para 1 para estabilidade
+const MAX_PARALLEL_HEAVY_COMMANDS = 1;
 let activeHeavyCommands = 0;
 
 // Informações do hardware
 const AVAILABLE_MEMORY = Math.floor(os.totalmem() / (1024 * 1024));
 const CPU_COUNT = os.cpus().length;
+
+// ✅ LOGS INFORMATIVOS
+console.log(`🚀 Configuração ativa: ${PERFORMANCE_MODE}`);
+console.log(`💾 Memória alocada: ${MAX_MEMORY_MB}MB`);
+console.log(`⚡ Modo: ${useLocalDB ? 'Local (Ultra Rápido)' : 'Híbrido (MongoDB + Local)'}`);
 console.log(`🖥️ Hardware: ${CPU_COUNT} CPUs, ${Math.round(AVAILABLE_MEMORY / 1024)}GB RAM`);
 console.log(`⚙️ Configuração: ${MAX_MEMORY_MB}MB alocados, ${MESSAGE_LIMIT} mensagens/usuário`);
+
+// Continue com o resto do código (gerenciadores de memória, etc.)...
 
 // Sistema de gerenciamento de memória com abordagem balanceada
 const memoryManager = {
