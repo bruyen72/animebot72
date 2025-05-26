@@ -28,6 +28,8 @@
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.17",
+    "@adiwajshing/baileys": "npm:@whiskeysockets/baileys@^6.7.17",
+    "@adiwajshing/keyed-db": "^0.2.4",
     "express": "^4.19.2",
     "axios": "^1.7.2",
     "chalk": "^4.1.2",
