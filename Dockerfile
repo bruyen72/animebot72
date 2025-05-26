@@ -1,51 +1,64 @@
-FROM node:20-buster
+# Dockerfile OTIMIZADO para WhatsApp Bot com Chrome
+FROM node:18-slim
 
-# Instala dependências e Chrome
+# INSTALA CHROME E DEPENDÊNCIAS ESSENCIAIS
 RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    imagemagick \
-    webp \
     wget \
     gnupg \
     ca-certificates \
-    curl \
-    && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
+    procps \
+    libxss1 \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libxkbcommon0 \
+    libatspi2.0-0 \
+    && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg \
+    && sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
     && apt-get update \
-    && apt-get install -y google-chrome-stable \
-    && npm i pm2 -g \
+    && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf \
+    --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
+# CONFIGURA USUÁRIO NÃO-ROOT
+RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
+    && mkdir -p /home/pptruser/Downloads \
+    && chown -R pptruser:pptruser /home/pptruser
+
+# CONFIGURA DIRETÓRIO DE TRABALHO
 WORKDIR /app
 
-# Copia dependências
-COPY package.json yarn.lock* ./
-RUN yarn install --production
+# COPIA E INSTALA DEPENDÊNCIAS
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
 
-# Copia código
+# COPIA CÓDIGO DA APLICAÇÃO
 COPY . .
 
-# 🔥 HEALTH CHECK ENDPOINT SIMPLES
-RUN echo 'const express = require("express"); \
-const app = express(); \
-app.get("/", (req, res) => res.json({status: "ok", bot: "online", uptime: process.uptime()})); \
-app.get("/health", (req, res) => res.json({status: "healthy", timestamp: new Date()})); \
-app.listen(3000, () => console.log("Health server running on port 3000")); \
-console.log("Starting main bot..."); \
-require("./index.js");' > server.js
+# AJUSTA PERMISSÕES
+RUN chown -R pptruser:pptruser /app
 
-# Variáveis de ambiente
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
-ENV CHROME_BIN=/usr/bin/google-chrome-stable
-ENV NODE_ENV=production
-ENV PORT=3000
+# CONFIGURA VARIÁVEIS DE AMBIENTE
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable \
+    CHROME_BIN=/usr/bin/google-chrome-stable \
+    DISPLAY=:99 \
+    NODE_ENV=production \
+    PORT=3000
 
-# 🔥 HEALTHCHECK PARA MANTER VIVO
-HEALTHCHECK --interval=60s --timeout=30s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
+# MUDA PARA USUÁRIO NÃO-ROOT
+USER pptruser
 
+# HEALTHCHECK
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD node -e "console.log('Bot rodando')" || exit 1
+
+# EXPÕE PORTA
 EXPOSE 3000
 
-# 🔥 COMANDO QUE NUNCA FALHA
-CMD ["pm2-runtime", "start", "ecosystem.config.js", "--env", "production"]
+# COMANDO DE INICIALIZAÇÃO
+CMD ["node", "--max-old-space-size=768", "index.js"]
