@@ -1,23 +1,91 @@
-# fly.toml app configuration file generated for animebot72 on 2025-05-26T19:15:15Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
+# fly.toml app configuration file - BOT 24/7 SEMPRE ACORDADO
 app = 'animebot72'
 primary_region = 'gru'
 
 [build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+  PUPPETEER_EXECUTABLE_PATH = "/usr/bin/google-chrome-stable"
+  CHROME_BIN = "/usr/bin/google-chrome-stable"
+  GOOGLE_CHROME_BIN = "/usr/bin/google-chrome-stable"
+  CHROMIUM_BIN = "/usr/bin/google-chrome-stable"
+  DISPLAY = ":99"
+  DEBIAN_FRONTEND = "noninteractive"
 
 [http_service]
   internal_port = 3000
   force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
+  auto_stop_machines = 'off'        # ⚡ NUNCA PARA!
+  auto_start_machines = true        # ⚡ SEMPRE INICIA!
+  min_machines_running = 1          # ⚡ MÍNIMO 1 SEMPRE RODANDO!
   processes = ['app']
+  
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 200
+    soft_limit = 150
 
 [[vm]]
   memory = '1gb'
-  cpu_kind = 'shared'
+  cpu_kind = 'shared' 
   cpus = 1
-  memory_mb = 1024
+
+[deploy]
+  release_command = "echo 'Bot WhatsApp 24/7 iniciando...'"
+  strategy = "immediate"
+
+[processes]
+  app = "node --max-old-space-size=768 index.js"
+
+# ⚡ CONFIGURAÇÕES PARA NUNCA DORMIR
+[restart]
+  policy = "always"
+
+[kill_signal]
+  signal = "SIGTERM"
+
+[kill_timeout]
+  timeout = 30
+
+# ⚡ HEALTH CHECK PARA MANTER VIVO
+[[services]]
+  protocol = "tcp"
+  internal_port = 3000
+  auto_stop_machines = false        # ⚡ NUNCA PARA!
+  auto_start_machines = true        # ⚡ SEMPRE INICIA!
+  min_machines_running = 1          # ⚡ MÍNIMO 1 RODANDO!
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "requests"
+    hard_limit = 200
+    soft_limit = 150
+
+  # ⚡ HEALTH CHECKS PARA MANTER ACORDADO
+  [[services.tcp_checks]]
+    interval = "30s"               # ⚡ VERIFICA A CADA 30s
+    timeout = "10s"
+    grace_period = "10s"
+
+  [[services.http_checks]]
+    interval = "30s"               # ⚡ VERIFICA A CADA 30s
+    timeout = "10s"
+    grace_period = "10s"
+    method = "get"
+    path = "/health"
+    protocol = "http"
+
+# ⚡ MOUNTS PARA PERSISTÊNCIA
+[mounts]
