@@ -1,5 +1,5 @@
 # Dockerfile OTIMIZADO para WhatsApp Bot com Chrome
-FROM node:18-slim
+FROM node:20-slim
 
 # INSTALA CHROME E DEPENDÊNCIAS ESSENCIAIS
 RUN apt-get update && apt-get install -y \
