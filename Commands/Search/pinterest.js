@@ -215,6 +215,232 @@ class PinterestImageScraper {
     this.preWarmBrowsers();
   }
 
+  // FUNÇÃO ULTRA OTIMIZADA PARA RENDER
+  async createBrowserInstance() {
+    const launchOptions = {
+      headless: true,
+      timeout: 180000, // 3 minutos para ambientes lentos
+      protocolTimeout: 180000,
+      
+      args: [
+        // ===== SEGURANÇA E SANDBOX =====
+        "--no-sandbox",                    // Essencial para containers
+        "--disable-setuid-sandbox",        // Remove sandbox restritivo
+        "--disable-web-security",          // Para sites com CORS
+        
+        // ===== PERFORMANCE EXTREMA =====
+        "--single-process",                // UM SÓ PROCESSO (economia máxima)
+        "--no-zygote",                     // Remove processo zygote
+        "--no-first-run",                  // Pula configuração inicial
+        "--disable-dev-shm-usage",         // Usa /tmp ao invés de /dev/shm
+        
+        // ===== MEMÓRIA ULTRA OTIMIZADA =====
+        "--memory-pressure-off",           // Desativa monitoramento de memória
+        "--max-old-space-size=256",        // Limita RAM do V8 para 256MB
+        "--aggressive-cache-discard",      // Limpa cache agressivamente
+        "--disable-features=IsolateOrigins", // -10% memória (desabilita isolamento)
+        "--disable-site-isolation-trials", // Desabilita isolamento de sites
+        
+        // ===== GPU E RENDERIZAÇÃO =====
+        "--disable-gpu",                   // Sem GPU (economia)
+        "--disable-gpu-sandbox",           // Remove sandbox da GPU
+        "--disable-software-rasterizer",   // Remove renderização por software
+        "--disable-accelerated-2d-canvas", // Desabilita canvas 2D acelerado
+        "--disable-accelerated-video-decode", // Sem decode de vídeo acelerado
+        
+        // ===== RECURSOS DESNECESSÁRIOS =====
+        "--disable-extensions",            // Sem extensões
+        "--disable-plugins",               // Sem plugins
+        "--disable-default-apps",          // Sem apps padrão
+        "--disable-sync",                  // Sem sincronização
+        "--disable-translate",             // Sem tradutor
+        "--disable-background-networking", // Sem rede em background
+        "--disable-background-timer-throttling", // Sem throttling de timers
+        "--disable-backgrounding-occluded-windows", // Sem background de janelas
+        "--disable-renderer-backgrounding", // Sem background do renderer
+        
+        // ===== REDE E REQUESTS =====
+        "--disable-features=TranslateUI,VizDisplayCompositor", // Remove tradutor e compositor
+        "--disable-ipc-flooding-protection", // Remove proteção IPC
+        "--disable-client-side-phishing-detection", // Sem detecção de phishing
+        "--disable-background-media-suspend", // Sem suspensão de mídia
+        "--disable-domain-reliability",    // Sem monitoramento de domínio
+        
+        // ===== JAVASCRIPT E V8 =====
+        "--js-flags=--max-old-space-size=256 --expose-gc", // Limita JS + garbage collection manual
+        "--disable-v8-idle-tasks",         // Desabilita tarefas idle do V8
+        "--disable-hang-monitor",          // Remove monitor de travamentos
+        
+        // ===== MÍDIA E ÁUDIO =====
+        "--disable-audio-output",          // Sem áudio
+        "--autoplay-policy=no-user-gesture-required", // Autoplay sem gesture
+        
+        // ===== RENDER ESPECÍFICO =====
+        "--disable-logging",               // Sem logs (performance)
+        "--silent",                        // Modo silencioso
+        "--disable-crash-reporter",       // Sem crash reporter
+        "--no-crash-upload",               // Sem upload de crashes
+        "--disable-breakpad",              // Sem breakpad crash handler
+        
+        // ===== EXPERIMENTAL PARA ECONOMIA MÁXIMA =====
+        "--process-per-site",              // Um processo por site (menos isolamento, mais economia)
+        "--disable-features=site-per-process", // Desabilita processo por site
+        "--renderer-process-limit=1",      // Máximo 1 processo renderer
+        "--disable-features=UserAgentClientHint", // Remove hints de user agent
+        
+        // ===== CACHE E STORAGE =====
+        "--disk-cache-size=0",             // Sem cache em disco
+        "--media-cache-size=0",            // Sem cache de mídia
+        "--disable-application-cache",     // Sem application cache
+        
+        // ===== OTIMIZAÇÕES EXTRAS =====
+        "--disable-component-extensions-with-background-pages", // Sem extensões com background
+        "--disable-dev-tools",             // Remove DevTools
+        "--disable-features=ScriptStreaming", // Remove streaming de script
+        "--disable-threaded-compositing",  // Remove compositing thread
+        "--disable-threaded-scrolling",    // Remove scrolling thread
+        
+        // ===== FLAGS DE EMERGÊNCIA =====
+        "--unlimited-storage",             // Storage ilimitado se necessário
+        "--force-gpu-mem-available-mb=128", // Força apenas 128MB GPU
+        "--force-device-scale-factor=1",   // Força escala 1x
+      ],
+      
+      // ===== VIEWPORT MÍNIMO =====
+      defaultViewport: { 
+        width: 800,    // Reduzido de 1366
+        height: 600    // Reduzido de 768
+      },
+      
+      // ===== CONFIGURAÇÕES EXTRAS =====
+      devtools: false,
+      ignoreDefaultArgs: false, // Usa args padrão + nossos
+      ignoreHTTPSErrors: true,  // Ignora erros SSL
+      
+      // ===== CONFIGURAÇÕES DE PIPE (mais eficiente que WebSocket) =====
+      pipe: true,  // USA PIPE ao invés de WebSocket (mais rápido)
+    };
+
+    // ===== TENTATIVA 1: CHROME PERSONALIZADO =====
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      try {
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        
+        console.log(`[BROWSER] 🚀 Tentando Chrome ULTRA-otimizado: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+        const browser = await puppeteer.launch(launchOptions);
+        
+        // CONFIGURAÇÃO ADICIONAL PÓS-LAUNCH
+        const context = browser.defaultBrowserContext();
+        await context.overridePermissions('https://br.pinterest.com', ['geolocation', 'notifications']);
+        
+        console.log(`[BROWSER] ✅ SUCESSO - Chrome ultra-otimizado criado!`);
+        
+        const instanceId = Date.now() + Math.random();
+        return {
+          browser,
+          inUse: false,
+          id: instanceId,
+          created: Date.now(),
+          lastUsed: Date.now(),
+          loginStatus: 'none'
+        };
+      } catch (error) {
+        console.error(`[BROWSER] ❌ Falha Chrome personalizado: ${error.message}`);
+      }
+    }
+
+    // ===== TENTATIVA 2: MODO SUPER ECONÔMICO =====
+    try {
+      delete launchOptions.executablePath;
+      
+      // ADICIONA FLAGS DE EMERGÊNCIA PARA AMBIENTES RESTRITIVOS
+      launchOptions.args.push(
+        "--disable-features=VizDisplayCompositor,site-per-process",
+        "--run-all-compositor-stages-before-draw",
+        "--disable-new-content-rendering-timeout",
+        "--disable-lcd-text",              // Remove LCD text rendering
+        "--disable-gpu-rasterization",     // Remove GPU rasterization
+        "--num-raster-threads=1",          // Apenas 1 thread de raster
+        "--enable-low-end-device-mode",    // Modo dispositivo baixo-end
+      );
+      
+      console.log('[BROWSER] 🔥 Tentando modo SUPER econômico (pipe + single-process)...');
+      const browser = await puppeteer.launch(launchOptions);
+      
+      // OTIMIZAÇÕES PÓS-LAUNCH
+      const pages = await browser.pages();
+      if (pages.length > 0) {
+        const page = pages[0];
+        // Desabilita imagens para economia máxima
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+          const resourceType = req.resourceType();
+          if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+            req.abort();
+          } else {
+            req.continue();
+          }
+        });
+      }
+      
+      console.log('[BROWSER] ✅ Modo super econômico funcionando!');
+      
+      const instanceId = Date.now() + Math.random();
+      return {
+        browser,
+        inUse: false,
+        id: instanceId,
+        created: Date.now(),
+        lastUsed: Date.now(),
+        loginStatus: 'none'
+      };
+    } catch (error) {
+      console.error(`[BROWSER] ❌ Falha modo econômico: ${error.message}`);
+    }
+
+    // ===== TENTATIVA 3: MODO DE EMERGÊNCIA (MINIMAL) =====
+    try {
+      const emergencyOptions = {
+        headless: true,
+        pipe: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox", 
+          "--single-process",
+          "--no-zygote",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--disable-extensions",
+          "--max-old-space-size=128",  // APENAS 128MB
+          "--memory-pressure-off"
+        ],
+        defaultViewport: { width: 600, height: 400 } // MÍNIMO ABSOLUTO
+      };
+      
+      console.log('[BROWSER] 🆘 Tentando modo de EMERGÊNCIA (minimal)...');
+      const browser = await puppeteer.launch(emergencyOptions);
+      
+      console.log('[BROWSER] ✅ Modo emergência funcionando!');
+      
+      const instanceId = Date.now() + Math.random();
+      return {
+        browser,
+        inUse: false,
+        id: instanceId,
+        created: Date.now(),
+        lastUsed: Date.now(),
+        loginStatus: 'none'
+      };
+    } catch (error) {
+      console.error(`[BROWSER] ❌ Falha total no modo emergência: ${error.message}`);
+    }
+
+    // ===== ÚLTIMA TENTATIVA: ATIVA FALLBACK =====
+    console.error('[BROWSER] 💥 TODAS as tentativas falharam - ativando modo fallback API');
+    this.useFallbackAPI = true;
+    throw new Error(`Render sobrecarregado, usando modo fallback API: ${error.message}`);
+  }
+
   // NOVO: Busca via API externa (fallback quando Puppeteer falhar)
   async searchViaFallbackAPI(searchTerm, count = 1) {
     try {
@@ -392,1014 +618,936 @@ class PinterestImageScraper {
           console.log(`[FALLBACK] Usando API após ${this.retryAttempts} tentativas`);
           return await this.searchViaFallbackAPI(searchTerm, count);
         }
-        
-        await this.delay(attempt * 1500);
-      }
-    }
-  }
-
-  delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  // Sistema de limpeza automática melhorado
-  startCacheCleanup() {
-    setInterval(() => {
-      const now = Date.now();
-      for (const termo in this.imagemCache) {
-        const cache = this.imagemCache[termo];
-        if (cache.lastUsed && (now - cache.lastUsed) > 30 * 60 * 1000) {
-          delete this.imagemCache[termo];
-          console.log(`[CACHE] Limpo para termo: ${termo}`);
-        }
-      }
-    }, 10 * 60 * 1000);
-  }
-
-  // Manutenção automática de navegadores
-  startBrowserMaintenance() {
-    setInterval(async () => {
-      await this.closeIdleBrowsers();
-      await this.cleanupDeadBrowsers();
-    }, 5 * 60 * 1000);
-  }
-
-  // Cria instância de navegador otimizada com fallbacks COMPLETOS
-  async createBrowserInstance() {
-    const launchOptions = {
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--no-first-run",
-        "--no-zygote",
-        "--disable-gpu",
-        "--memory-pressure-off",
-        "--disable-background-timer-throttling",
-        "--disable-backgrounding-occluded-windows",
-        "--disable-renderer-backgrounding",
-        "--disable-features=TranslateUI",
-        "--disable-ipc-flooding-protection",
-        "--disable-background-networking",
-        "--disable-default-apps",
-        "--disable-extensions",
-        "--disable-sync",
-        "--metrics-recording-only",
-        "--no-default-browser-check",
-        "--no-first-run",
-        "--safebrowsing-disable-auto-update",
-        "--disable-client-side-phishing-detection"
-      ],
-      defaultViewport: { width: 1366, height: 768 },
-    };
-
-    // Tenta com executável personalizado primeiro
-    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-      try {
-        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-        const browser = await puppeteer.launch(launchOptions);
-        console.log(`[BROWSER] ✅ Criado com executablePath: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
-        
-        const instanceId = Date.now() + Math.random();
-        return {
-          browser,
-          inUse: false,
-          id: instanceId,
-          created: Date.now(),
-          lastUsed: Date.now(),
-          loginStatus: 'none'
-        };
-      } catch (error) {
-        console.error(`[BROWSER] ❌ Falha com executablePath: ${error.message}`);
-      }
-    }
-
-    // Fallback: tenta sem executablePath (usa Chrome do sistema/bundled)
-    try {
-      delete launchOptions.executablePath;
-      const browser = await puppeteer.launch(launchOptions);
-      console.log('[BROWSER] ✅ Criado com Chrome padrão do sistema');
-      
-      const instanceId = Date.now() + Math.random();
-      return {
-        browser,
-        inUse: false,
-        id: instanceId,
-        created: Date.now(),
-        lastUsed: Date.now(),
-        loginStatus: 'none'
-      };
-    } catch (error) {
-      console.error(`[BROWSER] ❌ Falha com Chrome padrão: ${error.message}`);
-      
-      // NOVO: Se tudo falhar, ativa modo fallback e lança erro específico
-      this.useFallbackAPI = true;
-      console.log('[BROWSER] Ativando modo fallback API definitivo');
-      throw new Error(`Chrome não disponível, usando modo fallback: ${error.message}`);
-    }
-  }
-
-  // Gerenciamento inteligente de navegadores
-  async acquireBrowser() {
-    // Se modo fallback está ativo, não tenta criar navegador
-    if (this.useFallbackAPI) {
-      throw new Error("Modo fallback ativo - usando API");
-    }
-
-    const loggedBrowser = this.browserInstances.find(
-      instance => !instance.inUse && instance.loginStatus === 'logged'
-    );
-    
-    if (loggedBrowser) {
-      loggedBrowser.inUse = true;
-      loggedBrowser.lastUsed = Date.now();
-      return loggedBrowser;
-    }
-
-    const availableBrowser = this.browserInstances.find(instance => !instance.inUse);
-    
-    if (availableBrowser) {
-      availableBrowser.inUse = true;
-      availableBrowser.lastUsed = Date.now();
-      return availableBrowser;
-    }
-
-    if (this.browserInstances.length < this.maxBrowsers) {
-      try {
-        const instance = await this.createBrowserInstance();
-        instance.inUse = true;
-        this.browserInstances.push(instance);
-        return instance;
-      } catch (error) {
-        console.error("[ERRO] Falha ao criar navegador:", error);
-        // Ativa fallback se não conseguir criar navegador
-        this.useFallbackAPI = true;
-        throw error;
-      }
-    }
-
-    let waitTime = 0;
-    const maxWait = 15000; // Reduzido para 15 segundos
-    
-    while (waitTime < maxWait) {
-      await this.delay(1000);
-      waitTime += 1000;
-      
-      const availableBrowser = this.browserInstances.find(instance => !instance.inUse);
-      if (availableBrowser) {
-        availableBrowser.inUse = true;
-        availableBrowser.lastUsed = Date.now();
-        return availableBrowser;
-      }
-    }
-
-    // Se timeout, ativa fallback
-    this.useFallbackAPI = true;
-    throw new Error("Timeout: Nenhum navegador disponível, ativando fallback");
-  }
-
-  releaseBrowser(instanceId) {
-    const instance = this.browserInstances.find(i => i.id === instanceId);
-    if (instance) {
-      instance.inUse = false;
-      instance.lastUsed = Date.now();
-    }
-  }
-
-  // Sistema de login COMPLETAMENTE REESCRITO e ROBUSTO
-  async performRobustLogin(page, maxAttempts = 3) {
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        console.log(`[LOGIN] Tentativa de login ${attempt}/${maxAttempts}`);
-        
-        await page.goto("https://br.pinterest.com/login/", { 
-          waitUntil: "networkidle2", 
-          timeout: 45000 
-        });
-
-        await this.delay(3000);
-        await this.handleCookiesModal(page);
-
-        const emailInput = await this.findLoginField(page);
-        if (!emailInput) {
-          throw new Error("Campo de email não encontrado após todas as tentativas");
-        }
-
-        const passwordInput = await this.findPasswordField(page);
-        if (!passwordInput) {
-          throw new Error("Campo de senha não encontrado");
-        }
-
-        await this.fillLoginFields(page, emailInput, passwordInput);
-        const success = await this.submitLoginForm(page);
-        
-        if (success) {
-          console.log("[LOGIN] ✅ Login realizado com sucesso!");
-          return true;
-        } else {
-          throw new Error("Falha na submissão do formulário");
-        }
-
-      } catch (error) {
-        console.error(`[LOGIN] ❌ Tentativa ${attempt} falhou:`, error.message);
-        
-        if (attempt === maxAttempts) {
-          throw new Error(`Login falhou após ${maxAttempts} tentativas: ${error.message}`);
-        }
-        
-        await this.delay(attempt * 3000);
-        
-        try {
-          await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
-          await this.delay(2000);
-        } catch (reloadError) {
-          console.error("[LOGIN] Falha ao recarregar página:", reloadError.message);
-        }
-      }
-    }
-    
-    return false;
-  }
-
-  // Lida com modal de cookies de forma robusta
-  async handleCookiesModal(page) {
-    try {
-      console.log("[LOGIN] Verificando modal de cookies...");
-      
-      const cookieSelectors = [
-        'button[data-test-id="accept-cookies-button"]',
-        'button[aria-label*="cookie" i]',
-        'button:has-text("Aceitar")',
-        'button:has-text("Accept")',
-        'button[class*="cookie" i]',
-        '[role="dialog"] button',
-        '.cookie-banner button'
-      ];
-
-      for (const selector of cookieSelectors) {
-        try {
-          const cookieButton = await page.waitForSelector(selector, { timeout: 3000 });
-          if (cookieButton && await cookieButton.isVisible()) {
-            await cookieButton.click();
-            await this.delay(1500);
-            console.log("[LOGIN] Modal de cookies fechado");
-            break;
-          }
-        } catch {}
-      }
-    } catch (error) {
-      console.log("[LOGIN] Nenhum modal de cookies detectado");
-    }
-  }
-
-  // Sistema ROBUSTO para encontrar campo de email/login
-  async findLoginField(page) {
-    console.log("[LOGIN] Procurando campo de email...");
-    
-    const emailSelectors = [
-      'input[name="id"]',
-      'input[data-test-id="email"]',
-      'input[data-testid="email"]',
-      'input[autocomplete="username"]',
-      'input[autocomplete="email"]',
-      'input[name="email"]',
-      'input[name="username"]',
-      'input[type="email"]',
-      'input[id="email"]',
-      'input[id="username"]',
-      'input[placeholder*="email" i]',
-      'input[placeholder*="Email" i]',
-      'input[placeholder*="e-mail" i]',
-      'input[placeholder*="usuário" i]',
-      'input[placeholder*="user" i]',
-      'form input[type="text"]:first-of-type',
-      'form input:not([type="password"]):not([type="hidden"]):not([type="submit"]):first-of-type',
-      '.login-form input:first-of-type',
-      '[class*="login"] input:first-of-type',
-      '[class*="signin"] input:first-of-type'
-    ];
-
-    for (const selector of emailSelectors) {
-      try {
-        console.log(`[LOGIN] Testando seletor: ${selector}`);
-        
-        const element = await page.waitForSelector(selector, { 
-          timeout: 5000,
-          visible: true 
-        });
-        
-        if (element) {
-          const isVisible = await element.isVisible();
-          const isEnabled = await page.evaluate(el => !el.disabled, element);
-          
-          if (isVisible && isEnabled) {
-            console.log(`[LOGIN] ✅ Campo de email encontrado com: ${selector}`);
-            return element;
-          }
-        }
-      } catch (error) {
-        console.log(`[LOGIN] ❌ Seletor ${selector} falhou: ${error.message}`);
-      }
-    }
-    
-    try {
-      const allInputs = await page.$$('input[type="text"], input[type="email"], input:not([type])');
-      for (const input of allInputs) {
-        const isVisible = await input.isVisible();
-        if (isVisible) {
-          console.log("[LOGIN] ✅ Campo genérico encontrado");
-          return input;
-        }
-      }
-    } catch {}
-    
-    return null;
-  }
-
-  // Sistema robusto para encontrar campo de senha
-  async findPasswordField(page) {
-    console.log("[LOGIN] Procurando campo de senha...");
-    
-    const passwordSelectors = [
-      'input[name="password"]',
-      'input[type="password"]',
-      'input[data-test-id="password"]',
-      'input[data-testid="password"]',
-      'input[autocomplete="current-password"]',
-      'input[autocomplete="password"]',
-      'input[id="password"]',
-      'input[placeholder*="senha" i]',
-      'input[placeholder*="password" i]'
-    ];
-
-    for (const selector of passwordSelectors) {
-      try {
-        const element = await page.waitForSelector(selector, { 
-          timeout: 8000,
-          visible: true 
-        });
-        
-        if (element && await element.isVisible()) {
-          console.log(`[LOGIN] ✅ Campo de senha encontrado: ${selector}`);
-          return element;
-        }
-      } catch (error) {
-        console.log(`[LOGIN] ❌ Seletor senha ${selector} falhou`);
-      }
-    }
-    
-    return null;
-  }
-
-  // Preenche campos de login com técnica robusta
-  async fillLoginFields(page, emailInput, passwordInput) {
-    try {
-      console.log("[LOGIN] Preenchendo campo de email...");
-      
-      await emailInput.click({ clickCount: 3 });
-      await this.delay(500);
-      await emailInput.type(this.loginCredentials.email, { delay: 150 });
-      await this.delay(1000);
-      
-      const emailValue = await page.evaluate(el => el.value, emailInput);
-      if (!emailValue || !emailValue.includes(this.loginCredentials.email)) {
-        await page.evaluate((el, email) => {
-          el.value = email;
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
-        }, emailInput, this.loginCredentials.email);
-      }
-      
-      console.log("[LOGIN] ✅ Email inserido com sucesso");
-      
-      console.log("[LOGIN] Preenchendo campo de senha...");
-      
-      await passwordInput.click({ clickCount: 3 });
-      await this.delay(500);
-      await passwordInput.type(this.loginCredentials.password, { delay: 150 });
-      await this.delay(1000);
-      
-      const passwordValue = await page.evaluate(el => el.value, passwordInput);
-      if (!passwordValue || passwordValue.length < 5) {
-        await page.evaluate((el, password) => {
-          el.value = password;
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
-        }, passwordInput, this.loginCredentials.password);
-      }
-      
-      console.log("[LOGIN] ✅ Senha inserida com sucesso");
-      
-    } catch (error) {
-      console.error("[LOGIN] ❌ Erro ao preencher campos:", error.message);
-      throw error;
-    }
-  }
-
-  // Submit do formulário com múltiplas estratégias
-  async submitLoginForm(page) {
-    try {
-      console.log("[LOGIN] Procurando botão de submit...");
-      
-      const submitSelectors = [
-        'button[type="submit"]',
-        'button[data-test-id="registerFormSubmitButton"]',
-        'button[data-testid="login-button"]',
-        'input[type="submit"]',
-        'button:has-text("Entrar")',
-        'button:has-text("Log in")',
-        'button:has-text("Sign in")',
-        'form button:last-of-type',
-        '.login-form button',
-        '[class*="login"] button'
-      ];
-
-      let submitButton = null;
-      
-      for (const selector of submitSelectors) {
-        try {
-          submitButton = await page.waitForSelector(selector, { 
-            timeout: 3000,
-            visible: true 
-          });
-          if (submitButton && await submitButton.isVisible()) {
-            console.log(`[LOGIN] ✅ Botão de submit encontrado: ${selector}`);
-            break;
-          }
-        } catch {}
-      }
-
-      if (!submitButton) {
-        throw new Error("Botão de submit não encontrado");
-      }
-
-      console.log("[LOGIN] Clicando no botão de login...");
-      
-      try {
-        await Promise.all([
-          page.waitForNavigation({ 
-            waitUntil: "domcontentloaded", 
-            timeout: 30000 
-          }),
-          submitButton.click()
-        ]);
-      } catch (navError) {
-        console.log("[LOGIN] Navegação não detectada, verificando URL...");
-        await this.delay(3000);
-      }
-
-      await this.delay(2000);
-      const currentUrl = page.url();
-      console.log(`[LOGIN] URL atual após login: ${currentUrl}`);
-      
-      const successUrls = [
-        'br.pinterest.com/',
-        'pinterest.com/home',
-        'pinterest.com/today',
-        'pinterest.com/resource'
-      ];
-      
-      const isLoggedIn = successUrls.some(url => currentUrl.includes(url)) && 
-                        !currentUrl.includes('/login');
-      
-      if (isLoggedIn) {
-        return true;
-      }
-      
-      try {
-        await page.waitForSelector([
-          '[data-test-id="header-profile"]',
-          '[data-test-id="user-menu-button"]',
-          '.profileMenuButton',
-          '.headerProfileButton'
-        ].join(','), { timeout: 5000 });
-        return true;
-      } catch {}
-      
-      return false;
-      
-    } catch (error) {
-      console.error("[LOGIN] ❌ Erro no submit:", error.message);
-      return false;
-    }
-  }
-
-  // Método principal de login otimizado com cache de sessão
-  async ensureLogin(browserInstance) {
-    try {
-      if (browserInstance.loginStatus === 'logged') {
-        return true;
-      }
-      
-      if (browserInstance.loginStatus === 'logging') {
-        let waitTime = 0;
-        while (browserInstance.loginStatus === 'logging' && waitTime < 60000) {
-          await this.delay(1000);
-          waitTime += 1000;
-        }
-        return browserInstance.loginStatus === 'logged';
-      }
-      
-      browserInstance.loginStatus = 'logging';
-      
-      try {
-        const page = await browserInstance.browser.newPage();
-        
-        await page.setUserAgent(
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-          "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        );
-        
-        const loginSuccess = await this.performRobustLogin(page);
-        
-        if (loginSuccess) {
-          browserInstance.loginStatus = 'logged';
-          console.log(`[LOGIN] ✅ Navegador ${browserInstance.id} logado com sucesso`);
-        } else {
-          browserInstance.loginStatus = 'failed';
-          console.error(`[LOGIN] ❌ Falha no login para navegador ${browserInstance.id}`);
-        }
-        
-        await page.close();
-        return loginSuccess;
-        
-      } catch (error) {
-        browserInstance.loginStatus = 'failed';
-        console.error(`[LOGIN] ❌ Erro crítico no login:`, error.message);
-        return false;
-      }
-      
-    } catch (error) {
-      browserInstance.loginStatus = 'failed';
-      console.error(`[LOGIN] ❌ Erro no ensureLogin:`, error.message);
-      return false;
-    }
-  }
-
-  // Método interno otimizado para buscar imagens
-  async searchImagesInternal(searchTerm, count = 1, isCustomSearch = false) {
-    let browserInstance = null;
-    let page = null;
-
-    try {
-      const cachedImages = this.getMultipleImages(searchTerm, count);
-      if (cachedImages && cachedImages.length >= count) {
-        console.log(`[CACHE] Usando ${cachedImages.length} imagens do cache para "${searchTerm}"`);
-        return cachedImages.slice(0, count);
-      }
-
-      browserInstance = await this.acquireBrowser();
-      console.log(`[BROWSER] Usando navegador ${browserInstance.id}`);
-      
-      const loginSuccess = await this.ensureLogin(browserInstance);
-      if (!loginSuccess) {
-        throw new Error("Falha no login do Pinterest");
-      }
-
-      page = await browserInstance.browser.newPage();
-      
-      await page.setUserAgent(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      );
-      
-      await page.setViewport({ width: 1366, height: 768 });
-      
-      await page.setRequestInterception(true);
-      page.on('request', (req) => {
-        const resourceType = req.resourceType();
-        if (['stylesheet', 'font', 'media'].includes(resourceType)) {
-          req.abort();
-        } else {
-          req.continue();
-        }
-      });
-
-      const encodedQuery = encodeURIComponent(searchTerm);
-      const searchUrl = isCustomSearch 
-        ? `https://br.pinterest.com/search/pins/?q=${encodedQuery}`
-        : this.termToUrl[searchTerm] || `https://br.pinterest.com/search/pins/?q=${encodedQuery}`;
-
-      console.log(`[SEARCH] Buscando em: ${searchUrl}`);
-      
-      await page.goto(searchUrl, { 
-        waitUntil: "domcontentloaded", 
-        timeout: 30000 
-      });
-
-      await this.delay(3000);
-
-      console.log("[SEARCH] Carregando mais imagens...");
-      for (let i = 0; i < 8; i++) {
-        await page.evaluate(() => {
-          window.scrollBy(0, window.innerHeight * 1.5);
-        });
-        await this.delay(i < 3 ? 2000 : 1500);
-      }
-
-      console.log("[SEARCH] Extraindo URLs das imagens...");
-      const imgs = await page.evaluate(() => {
-        const extractBestUrl = (img) => {
-          if (img.getAttribute("srcset")) {
-            const srcset = img.getAttribute("srcset");
-            const urls = srcset
-              .split(",")
-              .map((s) => s.trim().split(" ")[0])
-              .filter((u) => u && u.includes("pinimg.com"));
-            
-            const priorityOrder = ["originals", "736x", "564x", "474x"];
-            for (const priority of priorityOrder) {
-              const found = urls.find(url => url.includes(priority));
-              if (found) return found;
-            }
-            
-            return urls.length ? urls[urls.length - 1] : null;
-          }
-          return img.getAttribute("src");
-        };
-
-        const selectors = [
-          'img[srcset*="originals"]',
-          'img[srcset*="736x"]',
-          'img[srcset*="564x"]',
-          'img[srcset*="474x"]',
-          "img[srcset]",
-          'img[src*="pinimg.com"]',
-        ];
-
-        let allImgs = [];
-        for (const sel of selectors) {
-          const imgs = Array.from(document.querySelectorAll(sel));
-          allImgs = allImgs.concat(imgs);
-          if (allImgs.length > 120) break;
-        }
-
-        const validUrls = [...new Set(allImgs.map(extractBestUrl))]
-          .filter((url) => {
-            if (!url || !url.includes("pinimg.com")) return false;
-            
-            const match = url.match(/(\d+)x(\d+)/);
-            if (!match) return true;
-            
-            const width = parseInt(match[1], 10);
-            return width >= 200;
-          })
-          .slice(0, 150);
-
-        console.log(`[EXTRACT] Encontradas ${validUrls.length} imagens válidas`);
-        return validUrls;
-      });
-
-      await page.close();
-      this.releaseBrowser(browserInstance.id);
-
-      if (!imgs || imgs.length === 0) {
-        throw new Error(`Nenhuma imagem encontrada para "${searchTerm}"`);
-      }
-
-      console.log(`[SUCCESS] ${imgs.length} imagens extraídas para "${searchTerm}"`);
-
-      this.updateCache(searchTerm, imgs);
-
-      const selectedImages = this.getMultipleImages(searchTerm, count) || imgs.slice(0, count);
-      return selectedImages;
-
-    } catch (error) {
-      if (page) {
-        try {
-          await page.close();
-        } catch {}
-      }
-      if (browserInstance) {
-        try {
-          this.releaseBrowser(browserInstance.id);
-        } catch {}
-      }
-      console.error(`[ERRO] Falha na busca para "${searchTerm}":`, error.message);
-      throw error;
-    }
-  }
-
-  // Método público otimizado (usa sistema de fila)
-  async searchImages(searchTerm, count = 1, isCustomSearch = false) {
-    return this.addToQueue({ searchTerm, count, isCustomSearch });
-  }
-
-  // Sistema de cache otimizado
-  updateCache(termo, imagens) {
-    if (!this.imagemCache[termo]) {
-      this.imagemCache[termo] = {
-        urls: [],
-        enviadas: {},
-        lastUsed: Date.now(),
-        totalFetched: 0
-      };
-    }
-    
-    const cache = this.imagemCache[termo];
-    const newUrls = imagens.filter(url => !cache.urls.includes(url));
-    
-    cache.urls = [...cache.urls, ...newUrls];
-    cache.lastUsed = Date.now();
-    cache.totalFetched += newUrls.length;
-    
-    if (cache.urls.length > 200) {
-      cache.urls = cache.urls.slice(-150);
-      const urlsSet = new Set(cache.urls);
-      for (const url in cache.enviadas) {
-        if (!urlsSet.has(url)) {
-          delete cache.enviadas[url];
-        }
-      }
-    }
-    
-    console.log(`[CACHE] Atualizado "${termo}": ${cache.urls.length} URLs totais`);
-  }
-
-  // Sistema inteligente de seleção de imagens
-  getMultipleImages(termo, count) {
-    if (!this.imagemCache[termo] || !this.imagemCache[termo].urls.length) {
-      return null;
-    }
-    
-    const cache = this.imagemCache[termo];
-    cache.lastUsed = Date.now();
-    
-    const availableImages = cache.urls.filter(url => !cache.enviadas[url]);
-    
-    if (availableImages.length < count) {
-      const resetCount = Math.min(50, Object.keys(cache.enviadas).length);
-      const oldestSent = Object.entries(cache.enviadas)
-        .sort(([,a], [,b]) => a - b)
-        .slice(0, resetCount)
-        .map(([url]) => url);
-      
-      oldestSent.forEach(url => delete cache.enviadas[url]);
-      console.log(`[CACHE] Reset ${resetCount} imagens antigas para "${termo}"`);
-    }
-    
-    const urlsToUse = availableImages.length >= count ? availableImages : cache.urls;
-    
-    const notSent = urlsToUse.filter(url => !cache.enviadas[url]);
-    const sent = urlsToUse.filter(url => cache.enviadas[url]);
-    
-    const shuffledNotSent = [...notSent].sort(() => Math.random() - 0.5);
-    const shuffledSent = [...sent].sort(() => Math.random() - 0.5);
-    
-    const finalPool = [...shuffledNotSent, ...shuffledSent];
-    
-    const selectedImages = [];
-    const timestamp = Date.now();
-    
-    for (let i = 0; i < Math.min(count, finalPool.length); i++) {
-      const img = finalPool[i];
-      selectedImages.push(img);
-      cache.enviadas[img] = timestamp;
-    }
-    
-    console.log(`[CACHE] Selecionadas ${selectedImages.length} imagens para "${termo}"`);
-    return selectedImages;
-  }
-
-  // Limpeza de navegadores ociosos melhorada
-  async closeIdleBrowsers() {
-    const now = Date.now();
-    const idleTime = 8 * 60 * 1000;
-    const maxBrowsersToKeep = 2;
-
-    let closedCount = 0;
-    
-    for (let i = this.browserInstances.length - 1; i >= maxBrowsersToKeep; i--) {
-      const instance = this.browserInstances[i];
-      
-      if (!instance.inUse && 
-          instance.lastUsed && 
-          (now - instance.lastUsed) > idleTime) {
-        try {
-          await instance.browser.close();
-          this.browserInstances.splice(i, 1);
-          closedCount++;
-          console.log(`[MAINTENANCE] Navegador ocioso fechado: ${instance.id}`);
-        } catch (error) {
-          console.error(`[MAINTENANCE] Erro ao fechar navegador ${instance.id}:`, error.message);
-        }
-      }
-    }
-    
-    if (closedCount > 0) {
-      console.log(`[MAINTENANCE] ${closedCount} navegadores ociosos fechados`);
-    }
-  }
-
-  // Limpeza de navegadores "mortos"
-  async cleanupDeadBrowsers() {
-    let cleanedCount = 0;
-    
-    for (let i = this.browserInstances.length - 1; i >= 0; i--) {
-      const instance = this.browserInstances[i];
-      
-      try {
-        const pages = await instance.browser.pages();
-        if (pages.length === 0) {
-          await instance.browser.newPage().then(page => page.close());
-        }
-      } catch (error) {
-        console.log(`[MAINTENANCE] Removendo navegador morto: ${instance.id}`);
-        this.browserInstances.splice(i, 1);
-        cleanedCount++;
-      }
-    }
-    
-    if (cleanedCount > 0) {
-      console.log(`[MAINTENANCE] ${cleanedCount} navegadores mortos removidos`);
-    }
-  }
-
-  // Extração de quantidade do comando
-  extractCountFromArgs(args) {
-    const lastArg = args[args.length - 1];
-    const match = lastArg?.match(/^#?(\d+)$/);
-    
-    if (match) {
-      const count = parseInt(match[1], 10);
-      if (count >= 1 && count <= 10) {
-        return { count, newArgs: args.slice(0, -1) };
-      }
-    }
-    
-    return { count: 1, newArgs: args };
-  }
-
-  // Método principal do comando Pinterest OTIMIZADO
-  async handlePinterestCommand(Yaka, m, { args, body, prefix }) {
-    try {
-      const isPintSearch = body && body.toLowerCase().startsWith('.pinterest');
-      
-      if (isPintSearch) {
-        const fullQuery = body.slice(10).trim();
-        
-        if (!fullQuery) {
-          return Yaka.sendMessage(m.from, { 
-            text: "❌ Digite um termo para pesquisar depois de .pinterest\n\n*Exemplo:* .pinterest goku#5\n*Limite:* 1-10 imagens por busca" 
-          }, { quoted: m });
-        }
-        
-        const parts = fullQuery.split('#');
-        const searchQuery = parts[0].trim();
-        const count = parts[1] ? Math.min(Math.max(parseInt(parts[1]), 1), 10) : 1;
-        
-        console.log(`[COMMAND] Pinterest custom search: "${searchQuery}" x${count}`);
-        
-        await Yaka.sendMessage(m.from, { 
-          text: `🔍 Buscando ${count} imagem(ns) para "${searchQuery}"...\n⏱️ Aguarde alguns segundos...` 
-        }, { quoted: m });
-        
-        const images = await this.searchImages(searchQuery, count, true);
-        
-        for (let i = 0; i < images.length; i++) {
-          try {
-            await Yaka.sendMessage(
-              m.from,
-              { 
-                image: { url: images[i] }, 
-                caption: count > 1 
-                  ? `✨ Imagem ${i + 1}/${count}: ${searchQuery}\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}` 
-                  : `✨ ${searchQuery}\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}`
-              },
-              { quoted: m }
-            );
-            
-            if (i < images.length - 1) {
-              await this.delay(800);
-            }
-          } catch (sendError) {
-            console.error(`[SEND] Erro ao enviar imagem ${i + 1}:`, sendError.message);
-            await Yaka.sendMessage(m.from, { 
-              text: `❌ Erro ao enviar imagem ${i + 1}/${count}` 
-            }, { quoted: m });
-          }
-        }
-        
-        return;
-      }
-      
-      if (!args.length) {
-        const termosList = Object.keys(this.shortToFullTerm)
-          .map(key => `• *${key}* → ${this.shortToFullTerm[key]}`)
-          .join("\n");
-        return Yaka.sendMessage(m.from, { 
-          text: `📌 *Termos Disponíveis:*\n\n${termosList}\n\n*Uso:* \n• .pin <termo>\n• .pin <termo>#<1-10>\n\n*Exemplos:*\n• .pin gojo#5\n• .pinterest naruto#3\n\n${this.useFallbackAPI ? '🔧 *Modo:* API Fallback' : '🚀 *Modo:* Pinterest Direct'}` 
-        }, { quoted: m });
-      }
-
-      const { count, newArgs } = this.extractCountFromArgs(args);
-      const shortTerm = newArgs[0]?.toLowerCase();
-
-      if (!this.shortToFullTerm[shortTerm]) {
-        const availableTerms = Object.keys(this.shortToFullTerm).slice(0, 5).join(', ');
-        return Yaka.sendMessage(m.from, { 
-          text: `❌ Termo "${shortTerm}" não encontrado.\n\n*Alguns termos:* ${availableTerms}\n\nUse *.pin* sem argumentos para ver todos os termos.` 
-        }, { quoted: m });
-      }
-
-      const fullTerm = this.shortToFullTerm[shortTerm];
-      
-      console.log(`[COMMAND] Pinterest preset search: "${fullTerm}" x${count}`);
-      
-      await Yaka.sendMessage(m.from, { 
-        text: `🔍 Buscando ${count} imagem(ns) para *${fullTerm}*...\n⏱️ Processando...` 
-      }, { quoted: m });
-      
-      const images = await this.searchImages(fullTerm, count, false);
-      
-      for (let i = 0; i < images.length; i++) {
-        try {
-          await Yaka.sendMessage(
-            m.from,
-            { 
-              image: { url: images[i] }, 
-              caption: count > 1 
-                ? `✨ *${fullTerm}*\n📷 Imagem ${i + 1}/${count}\n🔖 Termo: *${shortTerm}*\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}` 
-                : `✨ *${fullTerm}*\n🔖 Termo: *${shortTerm}*\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}`
-            },
-            { quoted: m }
-          );
-          
-          if (i < images.length - 1) {
-            await this.delay(800);
-          }
-        } catch (sendError) {
-          console.error(`[SEND] Erro ao enviar imagem ${i + 1}:`, sendError.message);
-          await Yaka.sendMessage(m.from, { 
-            text: `❌ Erro ao enviar imagem ${i + 1}/${count}` 
-          }, { quoted: m });
-        }
-      }
-
-      if (Math.random() < 0.15) {
-        setTimeout(() => {
-          this.closeIdleBrowsers().catch(console.error);
-        }, 5000);
-      }
-
-    } catch (error) {
-      console.error("[COMMAND] Erro no comando Pinterest:", error);
-      
-      let errorMessage = "❌ Erro ao buscar imagem.";
-      
-      if (error.message.includes("login")) {
-        errorMessage = "❌ Erro de autenticação no Pinterest. Tentando resolver...";
-      } else if (error.message.includes("timeout")) {
-        errorMessage = "❌ Timeout na busca. Tente novamente em alguns segundos.";
-      } else if (error.message.includes("Nenhuma imagem")) {
-        errorMessage = "❌ Nenhuma imagem encontrada para este termo. Tente outro.";
-      }
-      
-      await Yaka.sendMessage(m.from, { 
-        text: `${errorMessage}\n\n💡 *Dica:* Tente novamente em alguns segundos ou use outro termo.` 
-      }, { quoted: m });
-    }
-  }
-
-  // Método para fechar todos os navegadores (cleanup completo)
-  async closeAllBrowsers() {
-    console.log("[CLEANUP] Fechando todos os navegadores...");
-    
-    const promises = this.browserInstances.map(async (instance) => {
-      try {
-        await instance.browser.close();
-        console.log(`[CLEANUP] Navegador ${instance.id} fechado`);
-      } catch (error) {
-        console.error(`[CLEANUP] Erro ao fechar navegador ${instance.id}:`, error.message);
-      }
-    });
-    
-    await Promise.allSettled(promises);
-    this.browserInstances = [];
-    console.log("[CLEANUP] Todos os navegadores fechados");
-  }
-
-  // Estatísticas do sistema
-  getStats() {
-    const totalBrowsers = this.browserInstances.length;
-    const activeBrowsers = this.browserInstances.filter(b => b.inUse).length;
-    const loggedBrowsers = this.browserInstances.filter(b => b.loginStatus === 'logged').length;
-    const queueSize = this.requestQueue.length;
-    const cacheTerms = Object.keys(this.imagemCache).length;
-    
-    return {
-      totalBrowsers,
-      activeBrowsers,
-      loggedBrowsers,
-      queueSize,
-      cacheTerms,
-      maxBrowsers: this.maxBrowsers,
-      maxConcurrent: this.maxConcurrentRequests,
-      fallbackMode: this.useFallbackAPI
-    };
-  }
+await this.delay(attempt * 1500);
+     }
+   }
+ }
+
+ delay(ms) {
+   return new Promise(resolve => setTimeout(resolve, ms));
+ }
+
+ // Sistema de limpeza automática melhorado
+ startCacheCleanup() {
+   setInterval(() => {
+     const now = Date.now();
+     for (const termo in this.imagemCache) {
+       const cache = this.imagemCache[termo];
+       if (cache.lastUsed && (now - cache.lastUsed) > 30 * 60 * 1000) {
+         delete this.imagemCache[termo];
+         console.log(`[CACHE] Limpo para termo: ${termo}`);
+       }
+     }
+   }, 10 * 60 * 1000);
+ }
+
+ // Manutenção automática de navegadores
+ startBrowserMaintenance() {
+   setInterval(async () => {
+     await this.closeIdleBrowsers();
+     await this.cleanupDeadBrowsers();
+   }, 5 * 60 * 1000);
+ }
+
+ // Gerenciamento inteligente de navegadores
+ async acquireBrowser() {
+   // Se modo fallback está ativo, não tenta criar navegador
+   if (this.useFallbackAPI) {
+     throw new Error("Modo fallback ativo - usando API");
+   }
+
+   const loggedBrowser = this.browserInstances.find(
+     instance => !instance.inUse && instance.loginStatus === 'logged'
+   );
+   
+   if (loggedBrowser) {
+     loggedBrowser.inUse = true;
+     loggedBrowser.lastUsed = Date.now();
+     return loggedBrowser;
+   }
+
+   const availableBrowser = this.browserInstances.find(instance => !instance.inUse);
+   
+   if (availableBrowser) {
+     availableBrowser.inUse = true;
+     availableBrowser.lastUsed = Date.now();
+     return availableBrowser;
+   }
+
+   if (this.browserInstances.length < this.maxBrowsers) {
+     try {
+       const instance = await this.createBrowserInstance();
+       instance.inUse = true;
+       this.browserInstances.push(instance);
+       return instance;
+     } catch (error) {
+       console.error("[ERRO] Falha ao criar navegador:", error);
+       // Ativa fallback se não conseguir criar navegador
+       this.useFallbackAPI = true;
+       throw error;
+     }
+   }
+
+   let waitTime = 0;
+   const maxWait = 15000; // Reduzido para 15 segundos
+   
+   while (waitTime < maxWait) {
+     await this.delay(1000);
+     waitTime += 1000;
+     
+     const availableBrowser = this.browserInstances.find(instance => !instance.inUse);
+     if (availableBrowser) {
+       availableBrowser.inUse = true;
+       availableBrowser.lastUsed = Date.now();
+       return availableBrowser;
+     }
+   }
+
+   // Se timeout, ativa fallback
+   this.useFallbackAPI = true;
+   throw new Error("Timeout: Nenhum navegador disponível, ativando fallback");
+ }
+
+ releaseBrowser(instanceId) {
+   const instance = this.browserInstances.find(i => i.id === instanceId);
+   if (instance) {
+     instance.inUse = false;
+     instance.lastUsed = Date.now();
+   }
+ }
+
+ // Sistema de login COMPLETAMENTE REESCRITO e ROBUSTO
+ async performRobustLogin(page, maxAttempts = 3) {
+   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+     try {
+       console.log(`[LOGIN] Tentativa de login ${attempt}/${maxAttempts}`);
+       
+       await page.goto("https://br.pinterest.com/login/", { 
+         waitUntil: "networkidle2", 
+         timeout: 45000 
+       });
+
+       await this.delay(3000);
+       await this.handleCookiesModal(page);
+
+       const emailInput = await this.findLoginField(page);
+       if (!emailInput) {
+         throw new Error("Campo de email não encontrado após todas as tentativas");
+       }
+
+       const passwordInput = await this.findPasswordField(page);
+       if (!passwordInput) {
+         throw new Error("Campo de senha não encontrado");
+       }
+
+       await this.fillLoginFields(page, emailInput, passwordInput);
+       const success = await this.submitLoginForm(page);
+       
+       if (success) {
+         console.log("[LOGIN] ✅ Login realizado com sucesso!");
+         return true;
+       } else {
+         throw new Error("Falha na submissão do formulário");
+       }
+
+     } catch (error) {
+       console.error(`[LOGIN] ❌ Tentativa ${attempt} falhou:`, error.message);
+       
+       if (attempt === maxAttempts) {
+         throw new Error(`Login falhou após ${maxAttempts} tentativas: ${error.message}`);
+       }
+       
+       await this.delay(attempt * 3000);
+       
+       try {
+         await page.reload({ waitUntil: 'networkidle2', timeout: 30000 });
+         await this.delay(2000);
+       } catch (reloadError) {
+         console.error("[LOGIN] Falha ao recarregar página:", reloadError.message);
+       }
+     }
+   }
+   
+   return false;
+ }
+
+ // Lida com modal de cookies de forma robusta
+ async handleCookiesModal(page) {
+   try {
+     console.log("[LOGIN] Verificando modal de cookies...");
+     
+     const cookieSelectors = [
+       'button[data-test-id="accept-cookies-button"]',
+       'button[aria-label*="cookie" i]',
+       'button:has-text("Aceitar")',
+       'button:has-text("Accept")',
+       'button[class*="cookie" i]',
+       '[role="dialog"] button',
+       '.cookie-banner button'
+     ];
+
+     for (const selector of cookieSelectors) {
+       try {
+         const cookieButton = await page.waitForSelector(selector, { timeout: 3000 });
+         if (cookieButton && await cookieButton.isVisible()) {
+           await cookieButton.click();
+           await this.delay(1500);
+           console.log("[LOGIN] Modal de cookies fechado");
+           break;
+         }
+       } catch {}
+     }
+   } catch (error) {
+     console.log("[LOGIN] Nenhum modal de cookies detectado");
+   }
+ }
+
+ // Sistema ROBUSTO para encontrar campo de email/login
+ async findLoginField(page) {
+   console.log("[LOGIN] Procurando campo de email...");
+   
+   const emailSelectors = [
+     'input[name="id"]',
+     'input[data-test-id="email"]',
+     'input[data-testid="email"]',
+     'input[autocomplete="username"]',
+     'input[autocomplete="email"]',
+     'input[name="email"]',
+     'input[name="username"]',
+     'input[type="email"]',
+     'input[id="email"]',
+     'input[id="username"]',
+     'input[placeholder*="email" i]',
+     'input[placeholder*="Email" i]',
+     'input[placeholder*="e-mail" i]',
+     'input[placeholder*="usuário" i]',
+     'input[placeholder*="user" i]',
+     'form input[type="text"]:first-of-type',
+     'form input:not([type="password"]):not([type="hidden"]):not([type="submit"]):first-of-type',
+     '.login-form input:first-of-type',
+     '[class*="login"] input:first-of-type',
+     '[class*="signin"] input:first-of-type'
+   ];
+
+   for (const selector of emailSelectors) {
+     try {
+       console.log(`[LOGIN] Testando seletor: ${selector}`);
+       
+       const element = await page.waitForSelector(selector, { 
+         timeout: 5000,
+         visible: true 
+       });
+       
+       if (element) {
+         const isVisible = await element.isVisible();
+         const isEnabled = await page.evaluate(el => !el.disabled, element);
+         
+         if (isVisible && isEnabled) {
+           console.log(`[LOGIN] ✅ Campo de email encontrado com: ${selector}`);
+           return element;
+         }
+       }
+     } catch (error) {
+       console.log(`[LOGIN] ❌ Seletor ${selector} falhou: ${error.message}`);
+     }
+   }
+   
+   try {
+     const allInputs = await page.$$('input[type="text"], input[type="email"], input:not([type])');
+     for (const input of allInputs) {
+       const isVisible = await input.isVisible();
+       if (isVisible) {
+         console.log("[LOGIN] ✅ Campo genérico encontrado");
+         return input;
+       }
+     }
+   } catch {}
+   
+   return null;
+ }
+
+ // Sistema robusto para encontrar campo de senha
+ async findPasswordField(page) {
+   console.log("[LOGIN] Procurando campo de senha...");
+   
+   const passwordSelectors = [
+     'input[name="password"]',
+     'input[type="password"]',
+     'input[data-test-id="password"]',
+     'input[data-testid="password"]',
+     'input[autocomplete="current-password"]',
+     'input[autocomplete="password"]',
+     'input[id="password"]',
+     'input[placeholder*="senha" i]',
+     'input[placeholder*="password" i]'
+   ];
+
+   for (const selector of passwordSelectors) {
+     try {
+       const element = await page.waitForSelector(selector, { 
+         timeout: 8000,
+         visible: true 
+       });
+       
+       if (element && await element.isVisible()) {
+         console.log(`[LOGIN] ✅ Campo de senha encontrado: ${selector}`);
+         return element;
+       }
+     } catch (error) {
+       console.log(`[LOGIN] ❌ Seletor senha ${selector} falhou`);
+     }
+   }
+   
+   return null;
+ }
+
+ // Preenche campos de login com técnica robusta
+ async fillLoginFields(page, emailInput, passwordInput) {
+   try {
+     console.log("[LOGIN] Preenchendo campo de email...");
+     
+     await emailInput.click({ clickCount: 3 });
+     await this.delay(500);
+     await emailInput.type(this.loginCredentials.email, { delay: 150 });
+     await this.delay(1000);
+     
+     const emailValue = await page.evaluate(el => el.value, emailInput);
+     if (!emailValue || !emailValue.includes(this.loginCredentials.email)) {
+       await page.evaluate((el, email) => {
+         el.value = email;
+         el.dispatchEvent(new Event('input', { bubbles: true }));
+         el.dispatchEvent(new Event('change', { bubbles: true }));
+       }, emailInput, this.loginCredentials.email);
+     }
+     
+     console.log("[LOGIN] ✅ Email inserido com sucesso");
+     
+     console.log("[LOGIN] Preenchendo campo de senha...");
+     
+     await passwordInput.click({ clickCount: 3 });
+     await this.delay(500);
+     await passwordInput.type(this.loginCredentials.password, { delay: 150 });
+     await this.delay(1000);
+     
+     const passwordValue = await page.evaluate(el => el.value, passwordInput);
+     if (!passwordValue || passwordValue.length < 5) {
+       await page.evaluate((el, password) => {
+         el.value = password;
+         el.dispatchEvent(new Event('input', { bubbles: true }));
+         el.dispatchEvent(new Event('change', { bubbles: true }));
+       }, passwordInput, this.loginCredentials.password);
+     }
+     
+     console.log("[LOGIN] ✅ Senha inserida com sucesso");
+     
+   } catch (error) {
+     console.error("[LOGIN] ❌ Erro ao preencher campos:", error.message);
+     throw error;
+   }
+ }
+
+ // Submit do formulário com múltiplas estratégias
+ async submitLoginForm(page) {
+   try {
+     console.log("[LOGIN] Procurando botão de submit...");
+     
+     const submitSelectors = [
+       'button[type="submit"]',
+       'button[data-test-id="registerFormSubmitButton"]',
+       'button[data-testid="login-button"]',
+       'input[type="submit"]',
+       'button:has-text("Entrar")',
+       'button:has-text("Log in")',
+       'button:has-text("Sign in")',
+       'form button:last-of-type',
+       '.login-form button',
+       '[class*="login"] button'
+     ];
+
+     let submitButton = null;
+     
+     for (const selector of submitSelectors) {
+       try {
+         submitButton = await page.waitForSelector(selector, { 
+           timeout: 3000,
+           visible: true 
+         });
+         if (submitButton && await submitButton.isVisible()) {
+           console.log(`[LOGIN] ✅ Botão de submit encontrado: ${selector}`);
+           break;
+         }
+       } catch {}
+     }
+
+     if (!submitButton) {
+       throw new Error("Botão de submit não encontrado");
+     }
+
+     console.log("[LOGIN] Clicando no botão de login...");
+     
+     try {
+       await Promise.all([
+         page.waitForNavigation({ 
+           waitUntil: "domcontentloaded", 
+           timeout: 30000 
+         }),
+         submitButton.click()
+       ]);
+     } catch (navError) {
+       console.log("[LOGIN] Navegação não detectada, verificando URL...");
+       await this.delay(3000);
+     }
+
+     await this.delay(2000);
+     const currentUrl = page.url();
+     console.log(`[LOGIN] URL atual após login: ${currentUrl}`);
+     
+     const successUrls = [
+       'br.pinterest.com/',
+       'pinterest.com/home',
+       'pinterest.com/today',
+       'pinterest.com/resource'
+     ];
+     
+     const isLoggedIn = successUrls.some(url => currentUrl.includes(url)) && 
+                       !currentUrl.includes('/login');
+     
+     if (isLoggedIn) {
+       return true;
+     }
+     
+     try {
+       await page.waitForSelector([
+         '[data-test-id="header-profile"]',
+         '[data-test-id="user-menu-button"]',
+         '.profileMenuButton',
+         '.headerProfileButton'
+       ].join(','), { timeout: 5000 });
+       return true;
+     } catch {}
+     
+     return false;
+     
+   } catch (error) {
+     console.error("[LOGIN] ❌ Erro no submit:", error.message);
+     return false;
+   }
+ }
+
+ // Método principal de login otimizado com cache de sessão
+ async ensureLogin(browserInstance) {
+   try {
+     if (browserInstance.loginStatus === 'logged') {
+       return true;
+     }
+     
+     if (browserInstance.loginStatus === 'logging') {
+       let waitTime = 0;
+       while (browserInstance.loginStatus === 'logging' && waitTime < 60000) {
+         await this.delay(1000);
+         waitTime += 1000;
+       }
+       return browserInstance.loginStatus === 'logged';
+     }
+     
+     browserInstance.loginStatus = 'logging';
+     
+     try {
+       const page = await browserInstance.browser.newPage();
+       
+       await page.setUserAgent(
+         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+       );
+       
+       const loginSuccess = await this.performRobustLogin(page);
+       
+       if (loginSuccess) {
+         browserInstance.loginStatus = 'logged';
+         console.log(`[LOGIN] ✅ Navegador ${browserInstance.id} logado com sucesso`);
+       } else {
+         browserInstance.loginStatus = 'failed';
+         console.error(`[LOGIN] ❌ Falha no login para navegador ${browserInstance.id}`);
+       }
+       
+       await page.close();
+       return loginSuccess;
+       
+     } catch (error) {
+       browserInstance.loginStatus = 'failed';
+       console.error(`[LOGIN] ❌ Erro crítico no login:`, error.message);
+       return false;
+     }
+     
+   } catch (error) {
+     browserInstance.loginStatus = 'failed';
+     console.error(`[LOGIN] ❌ Erro no ensureLogin:`, error.message);
+     return false;
+   }
+ }
+
+ // Método interno otimizado para buscar imagens
+ async searchImagesInternal(searchTerm, count = 1, isCustomSearch = false) {
+   let browserInstance = null;
+   let page = null;
+
+   try {
+     const cachedImages = this.getMultipleImages(searchTerm, count);
+     if (cachedImages && cachedImages.length >= count) {
+       console.log(`[CACHE] Usando ${cachedImages.length} imagens do cache para "${searchTerm}"`);
+       return cachedImages.slice(0, count);
+     }
+
+     browserInstance = await this.acquireBrowser();
+     console.log(`[BROWSER] Usando navegador ${browserInstance.id}`);
+     
+     const loginSuccess = await this.ensureLogin(browserInstance);
+     if (!loginSuccess) {
+       throw new Error("Falha no login do Pinterest");
+     }
+
+     page = await browserInstance.browser.newPage();
+     
+     await page.setUserAgent(
+       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+     );
+     
+     await page.setViewport({ width: 1366, height: 768 });
+     
+     await page.setRequestInterception(true);
+     page.on('request', (req) => {
+       const resourceType = req.resourceType();
+       if (['stylesheet', 'font', 'media'].includes(resourceType)) {
+         req.abort();
+       } else {
+         req.continue();
+       }
+     });
+
+     const encodedQuery = encodeURIComponent(searchTerm);
+     const searchUrl = isCustomSearch 
+       ? `https://br.pinterest.com/search/pins/?q=${encodedQuery}`
+       : this.termToUrl[searchTerm] || `https://br.pinterest.com/search/pins/?q=${encodedQuery}`;
+
+     console.log(`[SEARCH] Buscando em: ${searchUrl}`);
+     
+     await page.goto(searchUrl, { 
+       waitUntil: "domcontentloaded", 
+       timeout: 30000 
+     });
+
+     await this.delay(3000);
+
+     console.log("[SEARCH] Carregando mais imagens...");
+     for (let i = 0; i < 8; i++) {
+       await page.evaluate(() => {
+         window.scrollBy(0, window.innerHeight * 1.5);
+       });
+       await this.delay(i < 3 ? 2000 : 1500);
+     }
+
+     console.log("[SEARCH] Extraindo URLs das imagens...");
+     const imgs = await page.evaluate(() => {
+       const extractBestUrl = (img) => {
+         if (img.getAttribute("srcset")) {
+           const srcset = img.getAttribute("srcset");
+           const urls = srcset
+             .split(",")
+             .map((s) => s.trim().split(" ")[0])
+             .filter((u) => u && u.includes("pinimg.com"));
+           
+           const priorityOrder = ["originals", "736x", "564x", "474x"];
+           for (const priority of priorityOrder) {
+             const found = urls.find(url => url.includes(priority));
+             if (found) return found;
+           }
+           
+           return urls.length ? urls[urls.length - 1] : null;
+         }
+         return img.getAttribute("src");
+       };
+
+       const selectors = [
+         'img[srcset*="originals"]',
+         'img[srcset*="736x"]',
+         'img[srcset*="564x"]',
+         'img[srcset*="474x"]',
+         "img[srcset]",
+         'img[src*="pinimg.com"]',
+       ];
+
+       let allImgs = [];
+       for (const sel of selectors) {
+         const imgs = Array.from(document.querySelectorAll(sel));
+         allImgs = allImgs.concat(imgs);
+         if (allImgs.length > 120) break;
+       }
+
+       const validUrls = [...new Set(allImgs.map(extractBestUrl))]
+         .filter((url) => {
+           if (!url || !url.includes("pinimg.com")) return false;
+           
+           const match = url.match(/(\d+)x(\d+)/);
+           if (!match) return true;
+           
+           const width = parseInt(match[1], 10);
+           return width >= 200;
+         })
+         .slice(0, 150);
+
+       console.log(`[EXTRACT] Encontradas ${validUrls.length} imagens válidas`);
+       return validUrls;
+     });
+
+     await page.close();
+     this.releaseBrowser(browserInstance.id);
+
+     if (!imgs || imgs.length === 0) {
+       throw new Error(`Nenhuma imagem encontrada para "${searchTerm}"`);
+     }
+
+     console.log(`[SUCCESS] ${imgs.length} imagens extraídas para "${searchTerm}"`);
+
+     this.updateCache(searchTerm, imgs);
+
+     const selectedImages = this.getMultipleImages(searchTerm, count) || imgs.slice(0, count);
+     return selectedImages;
+
+   } catch (error) {
+     if (page) {
+       try {
+         await page.close();
+       } catch {}
+     }
+     if (browserInstance) {
+       try {
+         this.releaseBrowser(browserInstance.id);
+       } catch {}
+     }
+     console.error(`[ERRO] Falha na busca para "${searchTerm}":`, error.message);
+     throw error;
+   }
+ }
+
+ // Método público otimizado (usa sistema de fila)
+ async searchImages(searchTerm, count = 1, isCustomSearch = false) {
+   return this.addToQueue({ searchTerm, count, isCustomSearch });
+ }
+
+ // Sistema de cache otimizado
+ updateCache(termo, imagens) {
+   if (!this.imagemCache[termo]) {
+     this.imagemCache[termo] = {
+       urls: [],
+       enviadas: {},
+       lastUsed: Date.now(),
+       totalFetched: 0
+     };
+   }
+   
+   const cache = this.imagemCache[termo];
+   const newUrls = imagens.filter(url => !cache.urls.includes(url));
+   
+   cache.urls = [...cache.urls, ...newUrls];
+   cache.lastUsed = Date.now();
+   cache.totalFetched += newUrls.length;
+   
+   if (cache.urls.length > 200) {
+     cache.urls = cache.urls.slice(-150);
+     const urlsSet = new Set(cache.urls);
+     for (const url in cache.enviadas) {
+       if (!urlsSet.has(url)) {
+         delete cache.enviadas[url];
+       }
+     }
+   }
+   
+   console.log(`[CACHE] Atualizado "${termo}": ${cache.urls.length} URLs totais`);
+ }
+
+ // Sistema inteligente de seleção de imagens
+ getMultipleImages(termo, count) {
+   if (!this.imagemCache[termo] || !this.imagemCache[termo].urls.length) {
+     return null;
+   }
+   
+   const cache = this.imagemCache[termo];
+   cache.lastUsed = Date.now();
+   
+   const availableImages = cache.urls.filter(url => !cache.enviadas[url]);
+   
+   if (availableImages.length < count) {
+     const resetCount = Math.min(50, Object.keys(cache.enviadas).length);
+     const oldestSent = Object.entries(cache.enviadas)
+       .sort(([,a], [,b]) => a - b)
+       .slice(0, resetCount)
+       .map(([url]) => url);
+     
+     oldestSent.forEach(url => delete cache.enviadas[url]);
+     console.log(`[CACHE] Reset ${resetCount} imagens antigas para "${termo}"`);
+   }
+   
+   const urlsToUse = availableImages.length >= count ? availableImages : cache.urls;
+   
+   const notSent = urlsToUse.filter(url => !cache.enviadas[url]);
+   const sent = urlsToUse.filter(url => cache.enviadas[url]);
+   
+   const shuffledNotSent = [...notSent].sort(() => Math.random() - 0.5);
+   const shuffledSent = [...sent].sort(() => Math.random() - 0.5);
+   
+   const finalPool = [...shuffledNotSent, ...shuffledSent];
+   
+   const selectedImages = [];
+   const timestamp = Date.now();
+   
+   for (let i = 0; i < Math.min(count, finalPool.length); i++) {
+     const img = finalPool[i];
+     selectedImages.push(img);
+     cache.enviadas[img] = timestamp;
+   }
+   
+   console.log(`[CACHE] Selecionadas ${selectedImages.length} imagens para "${termo}"`);
+   return selectedImages;
+ }
+
+ // Limpeza de navegadores ociosos melhorada
+ async closeIdleBrowsers() {
+   const now = Date.now();
+   const idleTime = 8 * 60 * 1000;
+   const maxBrowsersToKeep = 2;
+
+   let closedCount = 0;
+   
+   for (let i = this.browserInstances.length - 1; i >= maxBrowsersToKeep; i--) {
+     const instance = this.browserInstances[i];
+     
+     if (!instance.inUse && 
+         instance.lastUsed && 
+         (now - instance.lastUsed) > idleTime) {
+       try {
+         await instance.browser.close();
+         this.browserInstances.splice(i, 1);
+         closedCount++;
+         console.log(`[MAINTENANCE] Navegador ocioso fechado: ${instance.id}`);
+       } catch (error) {
+         console.error(`[MAINTENANCE] Erro ao fechar navegador ${instance.id}:`, error.message);
+       }
+     }
+   }
+   
+   if (closedCount > 0) {
+     console.log(`[MAINTENANCE] ${closedCount} navegadores ociosos fechados`);
+   }
+ }
+
+ // Limpeza de navegadores "mortos"
+ async cleanupDeadBrowsers() {
+   let cleanedCount = 0;
+   
+   for (let i = this.browserInstances.length - 1; i >= 0; i--) {
+     const instance = this.browserInstances[i];
+     
+     try {
+       const pages = await instance.browser.pages();
+       if (pages.length === 0) {
+         await instance.browser.newPage().then(page => page.close());
+       }
+     } catch (error) {
+       console.log(`[MAINTENANCE] Removendo navegador morto: ${instance.id}`);
+       this.browserInstances.splice(i, 1);
+       cleanedCount++;
+     }
+   }
+   
+   if (cleanedCount > 0) {
+     console.log(`[MAINTENANCE] ${cleanedCount} navegadores mortos removidos`);
+   }
+ }
+
+ // Extração de quantidade do comando
+ extractCountFromArgs(args) {
+   const lastArg = args[args.length - 1];
+   const match = lastArg?.match(/^#?(\d+)$/);
+   
+   if (match) {
+     const count = parseInt(match[1], 10);
+     if (count >= 1 && count <= 10) {
+       return { count, newArgs: args.slice(0, -1) };
+     }
+   }
+   
+   return { count: 1, newArgs: args };
+ }
+
+ // Método principal do comando Pinterest OTIMIZADO
+ async handlePinterestCommand(Yaka, m, { args, body, prefix }) {
+   try {
+     const isPintSearch = body && body.toLowerCase().startsWith('.pinterest');
+     
+     if (isPintSearch) {
+       const fullQuery = body.slice(10).trim();
+       
+       if (!fullQuery) {
+         return Yaka.sendMessage(m.from, { 
+           text: "❌ Digite um termo para pesquisar depois de .pinterest\n\n*Exemplo:* .pinterest goku#5\n*Limite:* 1-10 imagens por busca" 
+         }, { quoted: m });
+       }
+       
+       const parts = fullQuery.split('#');
+       const searchQuery = parts[0].trim();
+       const count = parts[1] ? Math.min(Math.max(parseInt(parts[1]), 1), 10) : 1;
+       
+       console.log(`[COMMAND] Pinterest custom search: "${searchQuery}" x${count}`);
+       
+       await Yaka.sendMessage(m.from, { 
+         text: `🔍 Buscando ${count} imagem(ns) para "${searchQuery}"...\n⏱️ Aguarde alguns segundos...` 
+       }, { quoted: m });
+       
+       const images = await this.searchImages(searchQuery, count, true);
+       
+       for (let i = 0; i < images.length; i++) {
+         try {
+           await Yaka.sendMessage(
+             m.from,
+             { 
+               image: { url: images[i] }, 
+               caption: count > 1 
+                 ? `✨ Imagem ${i + 1}/${count}: ${searchQuery}\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}` 
+                 : `✨ ${searchQuery}\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}`
+             },
+             { quoted: m }
+           );
+           
+           if (i < images.length - 1) {
+             await this.delay(800);
+           }
+         } catch (sendError) {
+           console.error(`[SEND] Erro ao enviar imagem ${i + 1}:`, sendError.message);
+           await Yaka.sendMessage(m.from, { 
+             text: `❌ Erro ao enviar imagem ${i + 1}/${count}` 
+           }, { quoted: m });
+         }
+       }
+       
+       return;
+     }
+     
+     if (!args.length) {
+       const termosList = Object.keys(this.shortToFullTerm)
+         .map(key => `• *${key}* → ${this.shortToFullTerm[key]}`)
+         .join("\n");
+       return Yaka.sendMessage(m.from, { 
+         text: `📌 *Termos Disponíveis:*\n\n${termosList}\n\n*Uso:* \n• .pin <termo>\n• .pin <termo>#<1-10>\n\n*Exemplos:*\n• .pin gojo#5\n• .pinterest naruto#3\n\n${this.useFallbackAPI ? '🔧 *Modo:* API Fallback' : '🚀 *Modo:* Pinterest Direct'}` 
+       }, { quoted: m });
+     }
+
+     const { count, newArgs } = this.extractCountFromArgs(args);
+     const shortTerm = newArgs[0]?.toLowerCase();
+
+     if (!this.shortToFullTerm[shortTerm]) {
+       const availableTerms = Object.keys(this.shortToFullTerm).slice(0, 5).join(', ');
+       return Yaka.sendMessage(m.from, { 
+         text: `❌ Termo "${shortTerm}" não encontrado.\n\n*Alguns termos:* ${availableTerms}\n\nUse *.pin* sem argumentos para ver todos os termos.` 
+       }, { quoted: m });
+     }
+
+     const fullTerm = this.shortToFullTerm[shortTerm];
+     
+     console.log(`[COMMAND] Pinterest preset search: "${fullTerm}" x${count}`);
+     
+     await Yaka.sendMessage(m.from, { 
+       text: `🔍 Buscando ${count} imagem(ns) para *${fullTerm}*...\n⏱️ Processando...` 
+     }, { quoted: m });
+     
+     const images = await this.searchImages(fullTerm, count, false);
+     
+     for (let i = 0; i < images.length; i++) {
+       try {
+         await Yaka.sendMessage(
+           m.from,
+           { 
+             image: { url: images[i] }, 
+             caption: count > 1 
+               ? `✨ *${fullTerm}*\n📷 Imagem ${i + 1}/${count}\n🔖 Termo: *${shortTerm}*\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}` 
+               : `✨ *${fullTerm}*\n🔖 Termo: *${shortTerm}*\n📸 ${this.useFallbackAPI ? 'API Search' : 'Pinterest HD'}`
+           },
+           { quoted: m }
+         );
+         
+         if (i < images.length - 1) {
+           await this.delay(800);
+         }
+       } catch (sendError) {
+         console.error(`[SEND] Erro ao enviar imagem ${i + 1}:`, sendError.message);
+         await Yaka.sendMessage(m.from, { 
+           text: `❌ Erro ao enviar imagem ${i + 1}/${count}` 
+         }, { quoted: m });
+       }
+     }
+
+     if (Math.random() < 0.15) {
+       setTimeout(() => {
+         this.closeIdleBrowsers().catch(console.error);
+       }, 5000);
+     }
+
+   } catch (error) {
+     console.error("[COMMAND] Erro no comando Pinterest:", error);
+     
+     let errorMessage = "❌ Erro ao buscar imagem.";
+     
+     if (error.message.includes("login")) {
+       errorMessage = "❌ Erro de autenticação no Pinterest. Tentando resolver...";
+     } else if (error.message.includes("timeout")) {
+       errorMessage = "❌ Timeout na busca. Tente novamente em alguns segundos.";
+     } else if (error.message.includes("Nenhuma imagem")) {
+       errorMessage = "❌ Nenhuma imagem encontrada para este termo. Tente outro.";
+     }
+     
+     await Yaka.sendMessage(m.from, { 
+       text: `${errorMessage}\n\n💡 *Dica:* Tente novamente em alguns segundos ou use outro termo.` 
+     }, { quoted: m });
+   }
+ }
+
+ // Método para fechar todos os navegadores (cleanup completo)
+ async closeAllBrowsers() {
+   console.log("[CLEANUP] Fechando todos os navegadores...");
+   
+   const promises = this.browserInstances.map(async (instance) => {
+     try {
+       await instance.browser.close();
+       console.log(`[CLEANUP] Navegador ${instance.id} fechado`);
+     } catch (error) {
+       console.error(`[CLEANUP] Erro ao fechar navegador ${instance.id}:`, error.message);
+     }
+   });
+   
+   await Promise.allSettled(promises);
+   this.browserInstances = [];
+   console.log("[CLEANUP] Todos os navegadores fechados");
+ }
+
+ // Estatísticas do sistema
+ getStats() {
+   const totalBrowsers = this.browserInstances.length;
+   const activeBrowsers = this.browserInstances.filter(b => b.inUse).length;
+   const loggedBrowsers = this.browserInstances.filter(b => b.loginStatus === 'logged').length;
+   const queueSize = this.requestQueue.length;
+   const cacheTerms = Object.keys(this.imagemCache).length;
+   
+   return {
+     totalBrowsers,
+     activeBrowsers,
+     loggedBrowsers,
+     queueSize,
+     cacheTerms,
+     maxBrowsers: this.maxBrowsers,
+     maxConcurrent: this.maxConcurrentRequests,
+     fallbackMode: this.useFallbackAPI
+   };
+ }
 }
 
 // Instância global do scraper
@@ -1407,32 +1555,32 @@ const pinterestScraper = new PinterestImageScraper();
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log("[SHUTDOWN] Recebido SIGTERM, fechando navegadores...");
-  await pinterestScraper.closeAllBrowsers();
-  process.exit(0);
+ console.log("[SHUTDOWN] Recebido SIGTERM, fechando navegadores...");
+ await pinterestScraper.closeAllBrowsers();
+ process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log("[SHUTDOWN] Recebido SIGINT, fechando navegadores...");
-  await pinterestScraper.closeAllBrowsers();
-  process.exit(0);
+ console.log("[SHUTDOWN] Recebido SIGINT, fechando navegadores...");
+ await pinterestScraper.closeAllBrowsers();
+ process.exit(0);
 });
 
 // Exporta o módulo
 module.exports = {
-  name: "pinterest",
-  alias: ["pin"],
-  desc: "Sistema robusto de busca Pinterest com fallback automático para APIs externas",
-  category: "Search",
-  usage: "pin <termo> | pin <termo>#<1-10> | .pinterest <termo customizado>#<1-10>",
-  react: "🖼️",
-  start: async (Yaka, m, { args, body, prefix }) => {
-    await pinterestScraper.handlePinterestCommand(Yaka, m, { args, body, prefix });
-  },
-  
-  // Método adicional para estatísticas (opcional)
-  stats: () => pinterestScraper.getStats(),
-  
-  // Método para limpeza manual (opcional)
-  cleanup: () => pinterestScraper.closeAllBrowsers()
+ name: "pinterest",
+ alias: ["pin"],
+ desc: "Sistema robusto de busca Pinterest com fallback automático para APIs externas",
+ category: "Search",
+ usage: "pin <termo> | pin <termo>#<1-10> | .pinterest <termo customizado>#<1-10>",
+ react: "🖼️",
+ start: async (Yaka, m, { args, body, prefix }) => {
+   await pinterestScraper.handlePinterestCommand(Yaka, m, { args, body, prefix });
+ },
+ 
+ // Método adicional para estatísticas (opcional)
+ stats: () => pinterestScraper.getStats(),
+ 
+ // Método para limpeza manual (opcional)
+ cleanup: () => pinterestScraper.closeAllBrowsers()
 };
