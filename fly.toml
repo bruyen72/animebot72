@@ -1,4 +1,4 @@
-# fly.toml app configuration file - BOT 24/7 CORRIGIDO
+# fly.toml app configuration file - BOT 24/7 CORRIGIDO FINAL
 app = 'animebot72'
 primary_region = 'gru'
 
@@ -33,11 +33,8 @@ primary_region = 'gru'
 [processes]
   app = "./start.sh"
 
-[kill_signal]
-  signal = "SIGTERM"
-
-[kill_timeout]
-  timeout = 30
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
 
 [[services]]
   protocol = "tcp"
