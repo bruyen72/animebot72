@@ -29,9 +29,10 @@ if (!gg) {
 // -------------------------------------------------------------- //
 global.owner = gg.split(",");
 
-// MONGODB - Configurar com MongoDB Atlas para velocidade
-global.mongodb = process.env.MONGODB || "mongodb+srv://seu-usuario:sua-senha@cluster.mongodb.net/yakabot?retryWrites=true&w=majority";
-global.mongodbUrl = process.env.MONGODB_URL || global.mongodb;
+// SEM MONGODB - SISTEMA LOCAL ULTRA RÁPIDO
+global.mongodb = ""; // Vazio = sem MongoDB
+global.mongodbUrl = ""; // Vazio = sem MongoDB
+global.useLocalDB = true; // Usar sistema local
 
 global.sessionId = process.env.SESSION_ID || "ok";
 global.prefa = process.env.PREFIX || ".";
@@ -40,24 +41,141 @@ global.packname = process.env.PACKNAME || `👹 𝕐𝕒𝕜𝕒ᵐᵈ`;
 global.author = process.env.AUTHOR || "por: 𝖄𝖆𝖐𝖆𝖘𝖍𝖎";
 global.port = process.env.PORT || "3000";
 
-// FUNCIONALIDADES IMPORTANTES HABILITADAS
-global.disableXP = true; // Desabilitar XP (causa lentidão)
-global.disableAntilink = true; // Desabilitar antilink (causa lentidão)
-global.disableBotSwitch = false; // ✅ MANTER botSwitch
-global.disableChatbot = false; // ✅ MANTER chatbot  
-global.disableNSFW = false; // ✅ MANTER NSFW check
-global.disableBan = false; // ✅ MANTER sistema de ban
+// CACHE LOCAL ULTRA RÁPIDO (substitui MongoDB)
+global.cache = {
+    botSwitch: new Map(), // Liga/desliga bot por grupo
+    chatbot: new Map(),   // Chatbot por grupo
+    nsfw: new Map(),      // NSFW por grupo
+    banned: new Map(),    // Usuários banidos
+    settings: new Map(),  // Configurações gerais
+    antilink: new Map()   // Antilink por grupo
+};
 
-// OTIMIZAÇÕES DE VELOCIDADE
-global.fastMode = true; // Modo rápido
-global.quickResponse = true; // Resposta rápida
-global.cacheEnabled = true; // Cache habilitado
-global.optimizedDB = true; // DB otimizado
+// SISTEMA DE PERSISTÊNCIA SIMPLES (salva em arquivo)
+const fs = require('fs');
+const path = require('path');
+const CACHE_FILE = path.join(__dirname, 'bot_cache.json');
 
-// CONFIGURAÇÕES DE TIMEOUT OTIMIZADAS
-global.dbTimeout = 3000; // 3 segundos timeout (mais rápido)
-global.commandTimeout = 5000; // 5 segundos para comandos
-global.responseTimeout = 2000; // 2 segundos para resposta
+// Carregar cache do arquivo
+global.loadCache = () => {
+    try {
+        if (fs.existsSync(CACHE_FILE)) {
+            const data = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+            
+            // Converter objetos de volta para Maps
+            if (data.botSwitch) global.cache.botSwitch = new Map(Object.entries(data.botSwitch));
+            if (data.chatbot) global.cache.chatbot = new Map(Object.entries(data.chatbot));
+            if (data.nsfw) global.cache.nsfw = new Map(Object.entries(data.nsfw));
+            if (data.banned) global.cache.banned = new Map(Object.entries(data.banned));
+            if (data.settings) global.cache.settings = new Map(Object.entries(data.settings));
+            if (data.antilink) global.cache.antilink = new Map(Object.entries(data.antilink));
+            
+            console.log("✅ Cache local carregado!");
+        }
+    } catch (e) {
+        console.log("⚠️ Erro ao carregar cache, usando padrão");
+    }
+};
+
+// Salvar cache no arquivo
+global.saveCache = () => {
+    try {
+        const data = {
+            botSwitch: Object.fromEntries(global.cache.botSwitch),
+            chatbot: Object.fromEntries(global.cache.chatbot),
+            nsfw: Object.fromEntries(global.cache.nsfw),
+            banned: Object.fromEntries(global.cache.banned),
+            settings: Object.fromEntries(global.cache.settings),
+            antilink: Object.fromEntries(global.cache.antilink)
+        };
+        
+        fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.log("⚠️ Erro ao salvar cache");
+    }
+};
+
+// FUNÇÕES ULTRA RÁPIDAS (substituem MongoDB)
+global.db = {
+    // Bot Switch (liga/desliga bot por grupo)
+    getBotSwitch: (chatId) => {
+        return global.cache.botSwitch.get(chatId) !== false; // Default: true
+    },
+    
+    setBotSwitch: async (chatId, value) => {
+        global.cache.botSwitch.set(chatId, value);
+        global.saveCache();
+        return true;
+    },
+    
+    // Chatbot
+    getChatbot: (chatId) => {
+        return global.cache.chatbot.get(chatId) || false; // Default: false
+    },
+    
+    setChatbot: async (chatId, value) => {
+        global.cache.chatbot.set(chatId, value);
+        global.saveCache();
+        return true;
+    },
+    
+    // NSFW
+    getNSFW: (chatId) => {
+        return global.cache.nsfw.get(chatId) || false; // Default: false
+    },
+    
+    setNSFW: async (chatId, value) => {
+        global.cache.nsfw.set(chatId, value);
+        global.saveCache();
+        return true;
+    },
+    
+    // Sistema de Ban
+    getBanned: (userId) => {
+        return global.cache.banned.get(userId) || false; // Default: false
+    },
+    
+    setBanned: async (userId, value) => {
+        global.cache.banned.set(userId, value);
+        global.saveCache();
+        return true;
+    },
+    
+    // Antilink
+    getAntilink: (chatId) => {
+        return global.cache.antilink.get(chatId) || false; // Default: false
+    },
+    
+    setAntilink: async (chatId, value) => {
+        global.cache.antilink.set(chatId, value);
+        global.saveCache();
+        return true;
+    },
+    
+    // Configurações gerais
+    getSetting: (key) => {
+        return global.cache.settings.get(key);
+    },
+    
+    setSetting: async (key, value) => {
+        global.cache.settings.set(key, value);
+        global.saveCache();
+        return true;
+    }
+};
+
+// Carregar cache na inicialização
+global.loadCache();
+
+// Salvar cache a cada 5 minutos
+setInterval(global.saveCache, 5 * 60 * 1000);
+
+// CONFIGURAÇÕES DE VELOCIDADE
+global.fastMode = true;
+global.quickResponse = true;
+global.localMode = true;
+
+console.log("🚀 Sistema local ativado - ULTRA RÁPIDO!");
 
 module.exports = {
     mongodb: global.mongodb,
