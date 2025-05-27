@@ -1,5 +1,5 @@
 #!/bin/bash
-# start-chrome.sh - Inicializar Chrome otimizado
+# start-chrome.sh - Chrome GUI para YakaBot
 
 export DISPLAY=:99
 
@@ -9,14 +9,14 @@ while ! xset q &>/dev/null; do
     sleep 1
 done
 
-echo "Display :99 pronto! Iniciando Chrome..."
+echo "Display :99 pronto! Iniciando Chrome para YakaBot..."
 
-# Limpar cache antigo se necessário
+# Limpar cache antigo
 if [ -d "/home/chrome/.config/google-chrome/SingletonLock" ]; then
     rm -rf /home/chrome/.config/google-chrome/SingletonLock
 fi
 
-# Iniciar Chrome com configurações otimizadas
+# Iniciar Chrome otimizado para YakaBot
 exec /usr/bin/google-chrome-stable \
     --no-sandbox \
     --disable-setuid-sandbox \
@@ -28,8 +28,8 @@ exec /usr/bin/google-chrome-stable \
     --disable-renderer-backgrounding \
     --disable-field-trial-config \
     --disable-ipc-flooding-protection \
-    --force-gpu-mem-available-mb=2048 \
-    --max_old_space_size=2048 \
+    --force-gpu-mem-available-mb=1024 \
+    --max_old_space_size=512 \
     --memory-pressure-off \
     --max_unused_resource_memory_usage_percentage=5 \
     --enable-gpu-rasterization \
@@ -46,6 +46,8 @@ exec /usr/bin/google-chrome-stable \
     --enable-fast-unload \
     --window-size=1920,1080 \
     --start-maximized \
+    --homepage="http://localhost:3000" \
+    "http://localhost:3000" \
     "$@"
 
 ---
