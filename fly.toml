@@ -1,87 +1,28 @@
-# fly.toml - Chrome GUI 24h Bot
-app = "chrome-24h-bot"
-primary_region = "gru"  # São Paulo - mais próximo do Brasil
+app = "chrome-bot-24h"
+primary_region = "gru"
 
 [build]
   dockerfile = "Dockerfile"
 
-# Configuração de máquina otimizada
 [machines]
-  memory = "4096mb"    # 4GB RAM - necessário pro Chrome
-  cpus = 4             # 4 CPUs para boa performance
-  
-# Configurações de ambiente
+  memory = "4096mb"
+  cpus = 4
+
 [env]
   DISPLAY = ":99"
-  SCREEN_WIDTH = "1920"
-  SCREEN_HEIGHT = "1080"
-  SCREEN_DEPTH = "24"
-  CHROME_ARGS = "--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu-sandbox --force-gpu-mem-available-mb=2048 --max_old_space_size=2048"
-  VNC_PASSWORD = ""    # Sem senha para facilitar acesso
-  TZ = "America/Sao_Paulo"
+  DEBIAN_FRONTEND = "noninteractive"
 
-# Serviço HTTP/HTTPS (noVNC - acesso web)
 [[services]]
   protocol = "tcp"
   internal_port = 6080
-  auto_stop_machines = false    # NUNCA parar automaticamente
-  auto_start_machines = true    # Sempre iniciar
-  min_machines_running = 1      # Manter pelo menos 1 máquina rodando
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
 
   [[services.ports]]
     port = 80
     handlers = ["http"]
-    force_https = true
 
   [[services.ports]]
     port = 443
     handlers = ["tls", "http"]
-
-  # Health checks para manter bot ativo
-  [services.concurrency]
-    type = "connections"
-    hard_limit = 10
-    soft_limit = 5
-
-  [[services.tcp_checks]]
-    interval = "30s"
-    timeout = "10s"
-    grace_period = "10s"
-
-  [[services.http_checks]]
-    interval = "30s"
-    timeout = "10s"
-    grace_period = "10s"
-    method = "get"
-    path = "/vnc.html"
-    protocol = "http"
-
-# Serviço VNC direto (porta 5900)
-[[services]]
-  protocol = "tcp"
-  internal_port = 5900
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
-
-  [[services.ports]]
-    port = 5900
-
-# Volume para persistir dados do Chrome
-[[volumes]]
-  source = "chrome_data"
-  destination = "/home/chrome/.config"
-  initial_size = "10GB"
-
-# Configurações de escala (manter sempre ativo)
-[http_service]
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
-  max_machines_running = 1
-
-# Configurações de restart automático (removido - não suportado no fly.toml)
-
-# Deploy automático (removido - não suportado no fly.toml)
-
-# Métricas para monitoramento (removido - não suportado assim no fly.toml)
