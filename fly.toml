@@ -74,20 +74,14 @@ primary_region = "gru"  # São Paulo - mais próximo do Brasil
   initial_size = "10GB"
 
 # Configurações de escala (manter sempre ativo)
-[scaling]
+[http_service]
+  auto_stop_machines = false
+  auto_start_machines = true
   min_machines_running = 1
   max_machines_running = 1
 
-# Configurações de restart automático
-[restart]
-  policy = "always"
+# Configurações de restart automático (removido - não suportado no fly.toml)
 
-# Deploy automático
-[deploy]
-  strategy = "immediate"
-  max_unavailable = 0
+# Deploy automático (removido - não suportado no fly.toml)
 
-# Métricas para monitoramento
-[metrics]
-  port = 8080
-  path = "/metrics"
+# Métricas para monitoramento (removido - não suportado assim no fly.toml)
