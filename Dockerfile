@@ -1,64 +1,93 @@
-# Dockerfile OTIMIZADO para WhatsApp Bot com Chrome
-FROM node:20-slim
+# Chrome GUI 24h Bot - Fly.io
+FROM ubuntu:22.04
 
-# INSTALA CHROME E DEPENDÊNCIAS ESSENCIAIS
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DISPLAY=:99
+ENV SCREEN_WIDTH=1920
+ENV SCREEN_HEIGHT=1080
+ENV SCREEN_DEPTH=24
+
+# Instalar dependências básicas
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
+    software-properties-common \
+    apt-transport-https \
     ca-certificates \
-    procps \
-    libxss1 \
-    libnss3 \
+    curl \
+    unzip \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# Adicionar repositório do Google Chrome
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list
+
+# Instalar Chrome e dependências gráficas
+RUN apt-get update && apt-get install -y \
+    google-chrome-stable \
+    xvfb \
+    x11vnc \
+    fluxbox \
+    websockify \
+    pulseaudio \
+    pavucontrol \
+    fonts-liberation \
+    fonts-dejavu-core \
+    fonts-noto-color-emoji \
+    libasound2 \
     libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
     libdrm2 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
     libxcomposite1 \
     libxdamage1 \
     libxrandr2 \
-    libgbm1 \
-    libxkbcommon0 \
-    libatspi2.0-0 \
-    && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg \
-    && sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
-    && apt-get update \
-    && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf \
-    --no-install-recommends \
+    libxss1 \
+    libxtst6 \
     && rm -rf /var/lib/apt/lists/*
 
-# CONFIGURA USUÁRIO NÃO-ROOT
-RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
-    && mkdir -p /home/pptruser/Downloads \
-    && chown -R pptruser:pptruser /home/pptruser
+# Instalar noVNC para acesso web
+RUN wget -qO- https://github.com/novnc/noVNC/archive/v1.4.0.tar.gz | tar xz -C /opt/ \
+    && mv /opt/noVNC-1.4.0 /opt/novnc \
+    && wget -qO- https://github.com/novnc/websockify/archive/v0.11.0.tar.gz | tar xz -C /opt/ \
+    && mv /opt/websockify-0.11.0 /opt/novnc/utils/websockify
 
-# CONFIGURA DIRETÓRIO DE TRABALHO
-WORKDIR /app
+# Criar usuário não-root
+RUN groupadd -r chrome && useradd -r -g chrome -G audio,video chrome \
+    && mkdir -p /home/chrome/.config/google-chrome \
+    && mkdir -p /home/chrome/.vnc \
+    && chown -R chrome:chrome /home/chrome
 
-# COPIA E INSTALA DEPENDÊNCIAS
-COPY package*.json ./
-RUN npm install --only=production --legacy-peer-deps && npm cache clean --force
+# Configurar supervisor para manter processos rodando 24h
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# COPIA CÓDIGO DA APLICAÇÃO
-COPY . .
+# Scripts de inicialização
+COPY start-chrome.sh /usr/local/bin/start-chrome.sh
+COPY start-vnc.sh /usr/local/bin/start-vnc.sh
+COPY start-novnc.sh /usr/local/bin/start-novnc.sh
+COPY healthcheck.sh /usr/local/bin/healthcheck.sh
 
-# AJUSTA PERMISSÕES
-RUN chown -R pptruser:pptruser /app
+# Tornar scripts executáveis
+RUN chmod +x /usr/local/bin/*.sh
 
-# CONFIGURA VARIÁVEIS DE AMBIENTE
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable \
-    CHROME_BIN=/usr/bin/google-chrome-stable \
-    DISPLAY=:99 \
-    NODE_ENV=production \
-    PORT=3000
+# Configurar Chrome para performance
+RUN mkdir -p /home/chrome/.config/google-chrome/Default
+COPY chrome-preferences.json /home/chrome/.config/google-chrome/Default/Preferences
+RUN chown -R chrome:chrome /home/chrome/.config
 
-# MUDA PARA USUÁRIO NÃO-ROOT
-USER pptruser
+# Volumes para persistir dados
+VOLUME ["/home/chrome/.config", "/home/chrome/Downloads"]
 
-# HEALTHCHECK
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "console.log('Bot rodando')" || exit 1
+# Expor portas
+EXPOSE 6080 5900
 
-# EXPÕE PORTA
-EXPOSE 3000
+# Health check para manter bot ativo
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh
 
-# COMANDO DE INICIALIZAÇÃO
-CMD ["node", "--max-old-space-size=768", "index.js"]
+# Iniciar supervisor (mantém tudo rodando 24h)
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
