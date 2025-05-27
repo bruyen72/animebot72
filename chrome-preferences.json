@@ -1,0 +1,63 @@
+{
+  "browser": {
+    "check_default_browser": false,
+    "show_home_button": true,
+    "startup_urls": ["https://www.google.com"]
+  },
+  "profile": {
+    "default_content_setting_values": {
+      "notifications": 2,
+      "geolocation": 2,
+      "media_stream": 2
+    },
+    "managed_user_id": "",
+    "name": "Chrome Bot 24h",
+    "password_manager_enabled": false
+  },
+  "session": {
+    "restore_on_startup": 4,
+    "startup_urls": ["https://www.google.com"]
+  },
+  "download": {
+    "default_directory": "/home/chrome/Downloads",
+    "directory_upgrade": true,
+    "extensions_to_open": "",
+    "prompt_for_download": false
+  },
+  "homepage": "https://www.google.com",
+  "homepage_is_newtabpage": false,
+  "search": {
+    "suggest_enabled": false
+  },
+  "net": {
+    "network_prediction_options": 2
+  },
+  "alternate_error_pages": {
+    "enabled": false
+  },
+  "background_mode": {
+    "enabled": false
+  },
+  "hardware_acceleration_mode": {
+    "enabled": true
+  },
+  "translate": {
+    "enabled": false
+  },
+  "safebrowsing": {
+    "enabled": false,
+    "extended_reporting_enabled": false
+  },
+  "autofill": {
+    "enabled": false
+  },
+  "privacy_sandbox": {
+    "apis_enabled": false,
+    "personalized_ads_enabled": false
+  },
+  "performance_tuning": {
+    "high_performance_mode": {
+      "enabled": true
+    }
+  }
+}
