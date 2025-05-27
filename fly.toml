@@ -1,60 +1,230 @@
+# fly.toml - YakaBot WhatsApp + Chrome GUI - COMPLETO
 app = "animebot72"
-primary_region = "gru"
+primary_region = "gru"  # São Paulo - Brasil
+kill_signal = "SIGINT"
+kill_timeout = "30s"
 
+# FORÇAR USO DO DOCKERFILE (resolve o erro de detecção NodeJS)
 [build]
   dockerfile = "Dockerfile"
+  ignorefile = ".dockerignore"
+  
+[deploy]
+  strategy = "immediate"
 
+[experimental]
+  auto_rollback = false
+
+# CONFIGURAÇÃO DE MÁQUINA OTIMIZADA
 [machines]
-  memory = "2048mb"  # 2GB suficiente pro YakaBot + Chrome
-  cpus = 2
-
+  memory = "2048mb"  # 2GB RAM suficiente
+  cpus = 2           # 2 CPUs
+  
+# VARIÁVEIS DE AMBIENTE
 [env]
+  # Chrome GUI
   DISPLAY = ":99"
+  SCREEN_WIDTH = "1920"
+  SCREEN_HEIGHT = "1080"
+  SCREEN_DEPTH = "24"
+  
+  # Sistema
   DEBIAN_FRONTEND = "noninteractive"
   NODE_ENV = "production"
+  TZ = "America/Sao_Paulo"
+  
+  # Puppeteer otimizado
   PUPPETEER_EXECUTABLE_PATH = "/usr/bin/google-chrome-stable"
   PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
-  TZ = "America/Sao_Paulo"
+  PUPPETEER_ARGS = "--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage"
+  
+  # YakaBot configurações
+  NODE_OPTIONS = "--max-old-space-size=512"
+  
+  # Chrome configurações
+  CHROME_ARGS = "--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu-sandbox --force-gpu-mem-available-mb=1024"
+  
+  # VNC configurações
+  VNC_PASSWORD = ""
+  VNC_GEOMETRY = "1920x1080"
+  VNC_DEPTH = "24"
 
-# Serviço YakaBot (Express server)
+# SERVIÇO 1: YAKABOT WHATSAPP (Principal)
 [[services]]
   protocol = "tcp"
   internal_port = 3000
   auto_stop_machines = false
   auto_start_machines = true
   min_machines_running = 1
-
+  
+  # Portas HTTP/HTTPS para YakaBot
   [[services.ports]]
     port = 80
     handlers = ["http"]
+    force_https = true
 
   [[services.ports]]
     port = 443
     handlers = ["tls", "http"]
 
-  # Health check pro YakaBot
+  # Health check para YakaBot
   [[services.http_checks]]
     interval = "30s"
     timeout = "10s"
-    grace_period = "10s"
-    method = "get"
+    grace_period = "30s"
+    method = "GET"
     path = "/"
     protocol = "http"
+    tls_skip_verify = false
+    headers = {}
 
-# Serviço Chrome GUI (noVNC)
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "30s"
+
+  # Configurações de concorrência
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 50
+    soft_limit = 25
+
+# SERVIÇO 2: CHROME GUI (noVNC - Acesso Web)
 [[services]]
   protocol = "tcp"
   internal_port = 6080
   auto_stop_machines = false
   auto_start_machines = true
+  min_machines_running = 1
 
+  # Porta para Chrome GUI via web
   [[services.ports]]
     port = 8080
+    handlers = ["http"]
 
-# Serviço VNC direto
+  # Health check para Chrome GUI
+  [[services.http_checks]]
+    interval = "60s"
+    timeout = "15s"
+    grace_period = "45s"
+    method = "GET"
+    path = "/vnc.html"
+    protocol = "http"
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 10
+    soft_limit = 5
+
+# SERVIÇO 3: VNC DIRETO (Acesso VNC Client)
 [[services]]
   protocol = "tcp"
   internal_port = 5900
+  auto_stop_machines = false
 
+  # Porta VNC direta
   [[services.ports]]
     port = 5900
+
+  # Health check VNC
+  [[services.tcp_checks]]
+    interval = "60s"
+    timeout = "10s"
+    grace_period = "45s"
+
+# VOLUME PERSISTENTE PARA DADOS
+[[volumes]]
+  source = "yakabot_data"
+  destination = "/app/data"
+  initial_size = "5GB"
+
+# CONFIGURAÇÕES DE PROCESSO
+[[processes]]
+  name = "yakabot"
+  cmd = ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+
+# CONFIGURAÇÕES DE REDE
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  
+  # Configurações de sessão
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 50
+    soft_limit = 25
+
+# CONFIGURAÇÕES DE LOGGING
+[logging]
+  level = "info"
+
+# CONFIGURAÇÕES DE MÉTRICAS
+[metrics]
+  port = 9090
+  path = "/metrics"
+
+# CONFIGURAÇÕES DE BACKUP/RESTORE
+[backup]
+  # Backup automático dos dados do bot
+  schedule = "0 2 * * *"  # Todo dia às 2h da manhã
+
+# REGIÕES DISPONÍVEIS (caso queira expandir)
+# primary_region já está definido como "gru" (São Paulo)
+# Outras opções para Brasil/América do Sul:
+# - "gru" = São Paulo, Brasil  
+# - "scl" = Santiago, Chile
+# - "lim" = Lima, Peru
+
+# CONFIGURAÇÕES DE ESCALA AUTOMÁTICA
+[scaling]
+  min_machines_running = 1
+  max_machines_running = 2  # Máximo 2 instâncias
+
+# CONFIGURAÇÕES DE RESTART
+[restart]
+  policy = "on-failure"
+  max_retries = 3
+
+# CONFIGURAÇÕES DE RECURSOS AVANÇADAS
+[resources]
+  memory = "2048mb"
+  cpus = 2
+  
+  # Limites de recursos
+  [resources.limits]
+    memory = "2048mb"
+    cpus = 2
+  
+  # Requisitos mínimos
+  [resources.requests]
+    memory = "1024mb"
+    cpus = 1
+
+# CONFIGURAÇÕES DE SEGURANÇA
+[security]
+  # Headers de segurança
+  [security.headers]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+# CONFIGURAÇÕES DE CACHE
+[cache]
+  # Cache estático
+  [cache.static]
+    max_age = "1h"
+    
+# TIMEOUTS PERSONALIZADOS
+[timeouts]
+  # Timeout para inicialização
+  startup = "60s"
+  
+  # Timeout para health checks
+  health_check = "30s"
+  
+  # Timeout para shutdown
+  shutdown = "30s"
