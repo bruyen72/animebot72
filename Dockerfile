@@ -1,37 +1,22 @@
-# Chrome GUI 24h Bot - Fly.io
-FROM ubuntu:22.04
+# Dockerfile híbrido - NodeJS Bot + Chrome GUI
+FROM node:18-bullseye
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DISPLAY=:99
 ENV SCREEN_WIDTH=1920
 ENV SCREEN_HEIGHT=1080
-ENV SCREEN_DEPTH=24
 
-# Instalar dependências básicas
+# Instalar dependências do sistema para Chrome
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
     software-properties-common \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    unzip \
     supervisor \
-    && rm -rf /var/lib/apt/lists/*
-
-# Adicionar repositório do Google Chrome
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg
-RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list
-
-# Instalar Chrome e dependências gráficas
-RUN apt-get update && apt-get install -y \
-    google-chrome-stable \
     xvfb \
     x11vnc \
     fluxbox \
     websockify \
     pulseaudio \
-    pavucontrol \
     fonts-liberation \
     fonts-dejavu-core \
     fonts-noto-color-emoji \
@@ -50,22 +35,33 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     && rm -rf /var/lib/apt/lists/*
 
+# Instalar Google Chrome
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
+
 # Instalar noVNC para acesso web
 RUN wget -qO- https://github.com/novnc/noVNC/archive/v1.4.0.tar.gz | tar xz -C /opt/ \
     && mv /opt/noVNC-1.4.0 /opt/novnc \
     && wget -qO- https://github.com/novnc/websockify/archive/v0.11.0.tar.gz | tar xz -C /opt/ \
     && mv /opt/websockify-0.11.0 /opt/novnc/utils/websockify
 
-# Criar usuário não-root
-RUN groupadd -r chrome && useradd -r -g chrome -G audio,video chrome \
-    && mkdir -p /home/chrome/.config/google-chrome \
-    && mkdir -p /home/chrome/.vnc \
-    && chown -R chrome:chrome /home/chrome
+# Configurar diretório de trabalho
+WORKDIR /app
 
-# Configurar supervisor para manter processos rodando 24h
+# Copiar arquivos do NodeJS (seu bot)
+COPY package*.json ./
+RUN npm install
+
+# Copiar código do bot
+COPY . .
+
+# Configurar supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Scripts de inicialização
+# Scripts para Chrome GUI
 COPY start-chrome.sh /usr/local/bin/start-chrome.sh
 COPY start-vnc.sh /usr/local/bin/start-vnc.sh
 COPY start-novnc.sh /usr/local/bin/start-novnc.sh
@@ -74,20 +70,17 @@ COPY healthcheck.sh /usr/local/bin/healthcheck.sh
 # Tornar scripts executáveis
 RUN chmod +x /usr/local/bin/*.sh
 
-# Configurar Chrome para performance
-RUN mkdir -p /home/chrome/.config/google-chrome/Default
-COPY chrome-preferences.json /home/chrome/.config/google-chrome/Default/Preferences
-RUN chown -R chrome:chrome /home/chrome/.config
-
-# Volumes para persistir dados
-VOLUME ["/home/chrome/.config", "/home/chrome/Downloads"]
+# Criar usuário para Chrome
+RUN groupadd -r chrome && useradd -r -g chrome -G audio,video chrome \
+    && mkdir -p /home/chrome/.config/google-chrome \
+    && chown -R chrome:chrome /home/chrome
 
 # Expor portas
 EXPOSE 6080 5900
 
-# Health check para manter bot ativo
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD /usr/local/bin/healthcheck.sh
 
-# Iniciar supervisor (mantém tudo rodando 24h)
+# Iniciar supervisor (roda bot NodeJS + Chrome GUI)
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
