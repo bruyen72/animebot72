@@ -3,6 +3,7 @@ primary_region = "gru"
 
 [build]
   dockerfile = "Dockerfile"
+  ignorefile = ".dockerignore"
 
 [machines]
   memory = "4096mb"
